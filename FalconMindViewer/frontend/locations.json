@@ -1,0 +1,38 @@
+{
+  "default_location": "changping_park",
+  "locations": [
+    {
+      "id": "changping_park",
+      "name": "北京昌平公园",
+      "description": "北京市昌平区昌平公园",
+      "lon": 116.2317,
+      "lat": 40.2265,
+      "height": 1000.0,
+      "heading": 0.0,
+      "pitch": -90.0,
+      "roll": 0.0
+    },
+    {
+      "id": "tiananmen",
+      "name": "北京天安门",
+      "description": "北京市天安门广场",
+      "lon": 116.39139,
+      "lat": 39.9075,
+      "height": 500.0,
+      "heading": 0.0,
+      "pitch": -45.0,
+      "roll": 0.0
+    },
+    {
+      "id": "beijing_center",
+      "name": "北京市中心",
+      "description": "北京市中心区域",
+      "lon": 116.4074,
+      "lat": 39.9042,
+      "height": 1000.0,
+      "heading": 0.0,
+      "pitch": -45.0,
+      "roll": 0.0
+    }
+  ]
+}

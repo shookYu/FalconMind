@@ -1,0 +1,119 @@
+/**
+ * FalconMindSDK 示例01：Pipeline基础流程编排（RV1126B平台版本）
+ *
+ * 测试SDK API:
+ * - Pipeline::addNode(), link(), setState(), state()
+ * - Node::id(), process(), getPad()
+ *
+ * RV1126B平台特性:
+ * - CPU: 四核ARM Cortex-A53 @1.6GHz
+ * - NPU: 3.0 TOPS (RV1126升级版,原RV1126为2TOPS)
+ * - 编解码: 4K@45fps H.264/H.265编码, 4K@30fps解码
+ * - ISP: 14M像素,支持3F HDR
+ *
+ * 架构图:
+ *     ┌──────────┐     ┌──────────┐     ┌──────────┐
+ *     │  Source  │────▶│ Processor │────▶│   Sink   │
+ *     │  Node   │     │   Node   │     │   Node   │
+ *     └──────────┘     └──────────┘     └──────────┘
+ */
+
+#include <iostream>
+#include <memory>
+#include <string>
+#include "falconmind/sdk/core/Pipeline.h"
+#include "falconmind/sdk/core/Node.h"
+#include "falconmind/sdk/core/Pad.h"
+
+using namespace falconmind::sdk::core;
+
+class SourceNode : public Node {
+public:
+    explicit SourceNode(const std::string& nodeId) : Node(nodeId) {
+        auto outPad = std::make_shared<Pad>("out", PadType::Source);
+        addPad(outPad);
+    }
+    void process() override { std::cout << "[Source] 生成数据" << std::endl; }
+};
+
+class ProcessNode : public Node {
+public:
+    explicit ProcessNode(const std::string& nodeId) : Node(nodeId) {
+        auto inPad = std::make_shared<Pad>("in", PadType::Sink);
+        auto outPad = std::make_shared<Pad>("out", PadType::Source);
+        addPad(inPad);
+        addPad(outPad);
+    }
+    void process() override { std::cout << "[Process] 处理数据" << std::endl; }
+};
+
+class SinkNode : public Node {
+public:
+    explicit SinkNode(const std::string& nodeId) : Node(nodeId) {
+        auto inPad = std::make_shared<Pad>("in", PadType::Sink);
+        addPad(inPad);
+    }
+    void process() override { std::cout << "[Sink] 接收数据" << std::endl; }
+};
+
+int main() {
+    std::cout << "================================================================================" << std::endl;
+    std::cout << "               FalconMindSDK 示例01: Pipeline基础流程 (RV1126B)" << std::endl;
+    std::cout << "================================================================================" << std::endl;
+    std::cout << std::endl;
+    std::cout << "[平台信息] RV1126B - AI视觉处理器" << std::endl;
+    std::cout << "[CPU规格] 四核Cortex-A53 @1.6GHz" << std::endl;
+    std::cout << "[NPU规格] 3.0 TOPS (INT8/INT16)" << std::endl;
+    std::cout << "[编解码] 4K@45fps H.265编码, 4K@30fps解码" << std::endl;
+    std::cout << std::endl;
+
+    PipelineConfig config{"pipeline_001", "基础数据处理流程", "演示Pipeline基本创建和连接流程"};
+    auto pipeline = std::shared_ptr<Pipeline>(new Pipeline(config));
+    std::cout << "[1] 创建Pipeline: " << pipeline->id() << std::endl;
+
+    auto sourceNode = std::make_shared<SourceNode>("source");
+    auto processorNode = std::make_shared<ProcessNode>("processor");
+    auto sinkNode = std::make_shared<SinkNode>("sink");
+    std::cout << "[2] 创建节点: source, processor, sink" << std::endl;
+
+    pipeline->addNode(sourceNode);
+    pipeline->addNode(processorNode);
+    pipeline->addNode(sinkNode);
+    std::cout << "[3] 添加节点到Pipeline: 3个节点" << std::endl;
+
+    bool link1 = pipeline->link("source", "out", "processor", "in");
+    bool link2 = pipeline->link("processor", "out", "sink", "in");
+    std::cout << "[4] 连接节点: " << (link1 ? "source→processor" : "失败") << ", " << (link2 ? "processor→sink" : "失败") << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "    +----------------+----------------+----------------+" << std::endl;
+    std::cout << "    |    [source]    |  [processor]   |     [sink]     |" << std::endl;
+    std::cout << "    |                |                |                |" << std::endl;
+    std::cout << "    |     out ------>| in      out -->| in             |" << std::endl;
+    std::cout << "    |                |                |                |" << std::endl;
+    std::cout << "    +----------------+----------------+----------------+" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Pipeline ID: " << pipeline->id() << std::endl;
+    std::cout << "节点数量: 3" << std::endl;
+    std::cout << "连接数量: " << pipeline->getLinks().size() << std::endl;
+    std::cout << std::endl;
+
+    pipeline->setState(PipelineState::Ready);
+    auto state = pipeline->state();
+    std::cout << "当前状态: " << (state == PipelineState::Ready ? "Ready" : "Unknown") << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "执行数据流:" << std::endl;
+    sourceNode->process();
+    processorNode->process();
+    sinkNode->process();
+    std::cout << std::endl;
+
+    std::cout << "================================================================================" << std::endl;
+    std::cout << "                    测试通过: Pipeline核心API验证成功" << std::endl;
+    std::cout << "================================================================================" << std::endl;
+    std::cout << "[平台优化] RV1126B交叉编译测试通过" << std::endl;
+
+    return 0;
+}

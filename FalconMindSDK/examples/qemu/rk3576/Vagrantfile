@@ -1,0 +1,39 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.define "rk3576" do |rk3576|
+    rk3576.vm.box = "ubuntu/jammy64"
+
+    rk3576.vm.hostname = "rk3576-vm"
+
+    rk3576.vm.provider :virtualbox do |vb|
+      vb.name = "FalconMindSDK-RK3576"
+      vb.memory = "4096"
+      vb.cpus = 4
+      vb.cpu_feature :ace, :on
+      vb.cpu_feature :pae, :on
+
+      # ARM64仿真需要特殊配置
+      vb.customize ["modifyvm", :id, "--virt-type", "kvm"]
+    end
+
+    # 注意: VirtualBox默认不支持ARM64
+    # 如果需要真正的ARM64仿真，请使用QEMU provider
+    # vagrant plugin install vagrant-libvirt
+    # vagrant up --provider=libvirt
+
+    rk3576.vm.provision "shell", inline: <<-SHELL
+      # 安装ARM64交叉编译工具链
+      apt-get update
+      apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      # 安装QEMU用户态仿真
+      apt-get install -y qemu-user-static
+
+      # 配置环境变量
+      echo 'export ARM_TOOLCHAIN=/usr/bin' >> ~/.bashrc
+      echo 'export CROSS_COMPILE=aarch64-linux-gnu-' >> ~/.bashrc
+    SHELL
+  end
+end

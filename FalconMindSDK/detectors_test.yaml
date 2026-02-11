@@ -1,0 +1,14 @@
+detectors:
+  - id: yolo_v26_640_onnx
+    name: YOLOv26 640 ONNX
+    model_path: /opt/models/yolo_v26_640.onnx
+    label_path: /opt/models/coco80.txt
+    backend: onnxruntime
+    device: cpu
+    device_index: 0
+    precision: fp32
+    input_width: 640
+    input_height: 640
+    num_classes: 80
+    score_threshold: 0.25
+    nms_threshold: 0.45

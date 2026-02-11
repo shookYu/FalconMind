@@ -1,0 +1,187 @@
+name: FalconMind Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      version:
+        description: 'Version to deploy'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+    
+    - name: Build and push ClusterCenter image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ClusterCenter
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}-clustercenter
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push FalconMindViewer image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./FalconMindViewer
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}-viewer
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build and push FalconMindBuilder image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./FalconMindBuilder
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}-builder
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to staging
+      run: |
+        echo "🚀 Deploying FalconMind to staging environment..."
+        echo "Deployment would happen here with your preferred method:"
+        echo "- Kubernetes: kubectl apply -f k8s/"
+        echo "- Docker Compose: docker-compose up -d"
+        echo "- SSH: scp files to server"
+        echo ""
+        echo "For now, this is a placeholder deployment step."
+        echo "Configure your actual deployment method here."
+    
+    - name: Run smoke tests
+      run: |
+        echo "🧪 Running smoke tests..."
+        echo "1. Check ClusterCenter health..."
+        echo "2. Check Viewer health..."
+        echo "3. Check Builder health..."
+        echo ""
+        echo "Smoke tests would run actual HTTP requests to verify deployment."
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying FalconMind v${{ steps.version.outputs.VERSION }} to production..."
+        echo "Production deployment would happen here."
+        echo ""
+        echo "This might include:"
+        echo "1. Blue-green deployment"
+        echo "2. Canary release"
+        echo "3. Rolling update"
+        echo "4. Database migrations"
+        echo ""
+        echo "Configure your production deployment strategy here."
+    
+    - name: Notify deployment
+      run: |
+        echo "📢 Deployment notification would be sent here."
+        echo "Options:"
+        echo "- Slack webhook"
+        echo "- Email notification"
+        echo "- Teams message"
+        echo "- Webhook to monitoring system"
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Extract version
+      id: version
+      run: |
+        echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Generate changelog
+      run: |
+        echo "# FalconMind v${{ steps.version.outputs.VERSION }}" > CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "## Release Date: $(date)" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Features" >> CHANGELOG.md
+        echo "- Updated features would be listed here" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Bug Fixes" >> CHANGELOG.md
+        echo "- Fixed issues would be listed here" >> CHANGELOG.md
+        echo "" >> CHANGELOG.md
+        echo "### Performance Improvements" >> CHANGELOG.md
+        echo "- Performance optimizations would be listed here" >> CHANGELOG.md
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: FalconMind v${{ steps.version.outputs.VERSION }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
+        generate_release_notes: true

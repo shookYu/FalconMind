@@ -1,0 +1,5 @@
+# Cesium 库文件（通常很大，建议使用 git-lfs 或从构建脚本下载）
+libs/cesium/
+
+# 地图瓦片缓存（通常很大）
+tiles/

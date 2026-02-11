@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FalconMindViewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="libs/cesium/Build/Cesium/Widgets/widgets.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    
+    <!-- Vue 3 (本地) -->
+    <script src="libs/vue/vue.global.js"></script>
+    <!-- Cesium (本地) -->
+    <script src="libs/cesium/Build/Cesium/Cesium.js"></script>
+    <!-- 配置和服务 -->
+    <script src="utils/config.js"></script>
+    <script src="services/api.js"></script>
+    <script src="services/websocket.js"></script>
+    <script src="services/memory-manager.js"></script>
+    <script src="services/entity-batcher.js"></script>
+    <script src="utils/cesium-helpers.js"></script>
+    <!-- UI组件 -->
+    <script src="components/toast.js"></script>
+    <script src="components/loading-indicator.js"></script>
+    <script src="components/performance-monitor.js"></script>
+    <script src="components/dropdown-menu.js"></script>
+    <script src="components/data-query-panel.js"></script>
+    <!-- 工具 -->
+    <script src="utils/keyboard-shortcuts.js"></script>
+    <!-- 模块文件 -->
+    <script src="js/app-state.js"></script>
+    <script src="js/location-manager.js"></script>
+    <script src="js/cesium-manager.js"></script>
+    <script src="js/uav-renderer.js"></script>
+    <script src="js/mission-manager.js"></script>
+    <script src="js/visualization-manager.js"></script>
+    <script src="js/playback-manager.js"></script>
+    <script src="js/toolbar-actions.js"></script>
+    <script src="js/view-manager.js"></script>
+    <script src="js/websocket-handler.js"></script>
+    <script src="js/dropdown-menus.js"></script>
+    <!-- Main App -->
+    <script src="app.js?v=20240202"></script>
+  </body>
+</html>

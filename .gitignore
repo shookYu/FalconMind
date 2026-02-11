@@ -1,0 +1,53 @@
+# Build directories
+build/
+build*/
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+
+# Python virtualenv
+venv/
+env/
+.venv/
+
+# Node modules
+node_modules/
+
+# QEMU images
+*.qcow2
+*.img
+
+# Archives
+*.tar.gz
+*.tar
+*.zip
+
+# Temporary files
+*.tmp
+*.bak
+
+# Large files (>100MB)
+*.iso
+*.qcow2
+*.img

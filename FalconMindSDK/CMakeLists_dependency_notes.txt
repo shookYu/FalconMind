@@ -1,0 +1,53 @@
+# CMake依赖库管理说明
+
+## 依赖库下载策略
+
+CMakeLists.txt已配置为：
+1. **优先使用系统已安装的库**：通过find_package查找
+2. **如果找不到则自动下载**：使用FetchContent下载到build目录
+3. **避免重复下载**：使用GIT_SHALLOW和缓存机制
+
+## 依赖库位置
+
+### 系统安装（推荐）
+```bash
+# Ubuntu/Debian
+sudo apt-get install nlohmann-json3-dev
+
+# 或使用vcpkg
+vcpkg install nlohmann-json cpp-httplib
+```
+
+### 自动下载位置
+- 下载到：`3rd/` 目录（在SDK源码目录下）
+- 例如：`FalconMindSDK/3rd/json-src/` 和 `FalconMindSDK/3rd/httplib-src/`
+
+## 避免重复下载
+
+FetchContent会自动缓存已下载的库：
+- 如果`3rd`目录已存在，不会重新下载
+- 只有删除`3rd`目录后才会重新下载
+- 使用`GIT_SHALLOW TRUE`只下载最新提交，减少下载时间
+
+## 手动清理缓存
+
+如果需要强制重新下载：
+```bash
+cd FalconMindSDK
+rm -rf 3rd
+cd build
+cmake ..
+```
+
+## 使用系统库（推荐）
+
+如果系统已安装库，CMake会自动使用，无需下载：
+```bash
+# 安装系统库
+sudo apt-get install nlohmann-json3-dev
+
+# 编译时会自动检测并使用
+cd build
+cmake ..
+make
+```

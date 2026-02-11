@@ -1,0 +1,10 @@
+#cloud-config
+hostname: falconmind-test
+users:
+  - name: falcon
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    passwd: $6$rsa2048$OqKHBhQvG1L7DEITfFKPwqgJb7n7qLITiXLb3XgB3TL7mBm7YQY6L3YK6nL3vXQY6L3vXQY6L3vXQY6L3vX.
+    groups: sudo
+

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(16_vins_fusion_slam_x86 LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(FALCONMIND_SDK "/home/shook/study/opencode/FalconMindSDK")
+add_executable(16_vins_fusion_slam_x86 src/main.cpp)
+target_include_directories(16_vins_fusion_slam_x86 PRIVATE ${FALCONMIND_SDK}/include)
+target_link_libraries(16_vins_fusion_slam_x86 PRIVATE ${FALCONMIND_SDK}/build/libfalconmind_sdk.a pthread)

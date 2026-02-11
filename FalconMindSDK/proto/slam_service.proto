@@ -1,0 +1,22 @@
+// FalconMindSDK ↔ 算法容器 SLAM 服务（PRD 8.6）
+// 算法容器实现本 service；SDK 可选 gRPC 客户端调用 GetPose。
+syntax = "proto3";
+
+package falconmind.slam;
+
+service SLAMService {
+  rpc GetPose(GetPoseRequest) returns (GetPoseResponse);
+}
+
+message GetPoseRequest {}
+
+message GetPoseResponse {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double qx = 4;
+  double qy = 5;
+  double qz = 6;
+  double qw = 7;
+  uint64 timestamp_ns = 8;
+}
