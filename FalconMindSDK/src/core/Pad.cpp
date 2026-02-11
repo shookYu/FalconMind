@@ -10,12 +10,19 @@ bool Pad::connectTo(std::shared_ptr<Pad> targetPad, const std::string& targetNod
         return false;
     }
     
-    // 检查Pad类型兼容性：Source Pad只能连接到Sink Pad
-    if (type_ == PadType::Source && targetPad->type_ != PadType::Sink) {
-        return false;
-    }
-    if (type_ == PadType::Sink && targetPad->type_ != PadType::Source) {
-        return false;
+    // 检查Pad类型兼容性：
+    // Source Pad只能连接到Sink Pad
+    // Sink Pad只能连接到Source Pad
+    // Both Pad可以连接到Source、Sink或Both Pad
+    bool sourceCompatible = (type_ == PadType::Source || type_ == PadType::Both);
+    bool sinkCompatible = (type_ == PadType::Sink || type_ == PadType::Both);
+    
+    if (sourceCompatible && (targetPad->type_ == PadType::Sink || targetPad->type_ == PadType::Both)) {
+        // 允许连接
+    } else if (sinkCompatible && (targetPad->type_ == PadType::Source || targetPad->type_ == PadType::Both)) {
+        // 允许连接
+    } else {
+        return false;  // 类型不兼容
     }
     
     // 检查是否已经连接
@@ -43,7 +50,8 @@ bool Pad::disconnect() {
 }
 
 void Pad::pushToConnections(const void* data, size_t size) const {
-    if (type_ != PadType::Source || !data) return;
+    // Source和Both Pad都可以推送数据
+    if ((type_ != PadType::Source && type_ != PadType::Both) || !data) return;
     for (const auto& conn : connections_) {
         if (auto target = conn.targetPad.lock()) {
             DataCallback cb = target->getDataCallback();

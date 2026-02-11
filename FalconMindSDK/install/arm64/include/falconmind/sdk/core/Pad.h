@@ -9,8 +9,9 @@
 namespace falconmind::sdk::core {
 
 enum class PadType {
-    Source,
-    Sink
+    Source,  // 输出端口，只能发送数据
+    Sink,    // 输入端口，只能接收数据
+    Both     // 双向端口，可发送和接收数据
 };
 
 // 前向声明
