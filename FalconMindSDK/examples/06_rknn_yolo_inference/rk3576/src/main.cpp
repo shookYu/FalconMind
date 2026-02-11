@@ -1,5 +1,5 @@
 /**
- * FalconMindSDK 示例06：RKNN YOLO推理（x86平台版本）
+ * FalconMindSDK 示例06：RKNN YOLO推理（RK3576平台版本）
  *
  * 测试SDK API:
  * - RknnDetectorBackend::loadModel()
@@ -15,7 +15,7 @@ using namespace falconmind::sdk::perception;
 
 int main() {
     std::cout << "================================================================================" << std::endl;
-    std::cout << "                FalconMindSDK 示例06: RKNN YOLO推理 (x86)" << std::endl;
+    std::cout << "                FalconMindSDK 示例06: RKNN YOLO推理 (RK3576)" << std::endl;
     std::cout << "================================================================================" << std::endl;
     std::cout << std::endl;
 
