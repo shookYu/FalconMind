@@ -4,32 +4,40 @@ project(07_rknn_backend_rk3588 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Option to build without RKNN (for code verification only)
+option(BUILD_WITHOUT_RKNN "Build without RKNN Toolkit2 (simulation mode)" OFF)
+
 # FalconMind SDK path
 set(FALCONMIND_SDK "${CMAKE_CURRENT_SOURCE_DIR}/../../../..")
 
-# Find RKNN Toolkit2
-# RKNN Toolkit2 provides runtime API for both PC simulation and board deployment
-find_path(RKNN_API_INCLUDE_DIR 
-    NAMES rknn_api.h
-    PATHS 
-        /usr/include
-        /usr/local/include
-        /opt/rknn-toolkit2/include
-        $ENV{RKNN_TOOLKIT2_PATH}/include
-)
+if(BUILD_WITHOUT_RKNN)
+    message(WARNING "Building without RKNN Toolkit2 - simulation mode only")
+    set(RKNN_API_INCLUDE_DIR "")
+    set(RKNN_API_LIBRARY "")
+else()
+    # Find RKNN Toolkit2
+    # RKNN Toolkit2 provides runtime API for both PC simulation and board deployment
+    find_path(RKNN_API_INCLUDE_DIR 
+        NAMES rknn_api.h
+        PATHS 
+            /usr/include
+            /usr/local/include
+            /opt/rknn-toolkit2/include
+            $ENV{RKNN_TOOLKIT2_PATH}/include
+    )
 
-find_library(RKNN_API_LIBRARY 
-    NAMES rknn_api librknn_api
-    PATHS 
-        /usr/lib
-        /usr/local/lib
-        /opt/rknn-toolkit2/lib
-        $ENV{RKNN_TOOLKIT2_PATH}/lib
-)
+    find_library(RKNN_API_LIBRARY 
+        NAMES rknn_api librknn_api
+        PATHS 
+            /usr/lib
+            /usr/local/lib
+            /opt/rknn-toolkit2/lib
+            $ENV{RKNN_TOOLKIT2_PATH}/lib
+    )
 
-# Check if RKNN Toolkit2 is found
-if(NOT RKNN_API_INCLUDE_DIR OR NOT RKNN_API_LIBRARY)
-    message(FATAL_ERROR "
+    # Check if RKNN Toolkit2 is found
+    if(NOT RKNN_API_INCLUDE_DIR OR NOT RKNN_API_LIBRARY)
+        message(FATAL_ERROR "
 RKNN Toolkit2 not found!
 
 RKNN Toolkit2 is required for building this example.
@@ -42,12 +50,16 @@ Please install RKNN Toolkit2:
 
 For detailed installation instructions, see:
 https://github.com/rockchip-linux/rknn-toolkit2/blob/master/doc/01_RKNN_Toolkit2_Installation_Guide.md
-    ")
-endif()
 
-message(STATUS "RKNN Toolkit2 found:")
-message(STATUS "  Include: ${RKNN_API_INCLUDE_DIR}")
-message(STATUS "  Library: ${RKNN_API_LIBRARY}")
+Or build with simulation mode:
+    cmake -DBUILD_WITHOUT_RKNN=ON ..
+        ")
+    endif()
+
+    message(STATUS "RKNN Toolkit2 found:")
+    message(STATUS "  Include: ${RKNN_API_INCLUDE_DIR}")
+    message(STATUS "  Library: ${RKNN_API_LIBRARY}")
+endif()
 
 # Add executable
 add_executable(07_rknn_backend_rk3588 src/main.cpp)
