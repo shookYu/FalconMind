@@ -7,12 +7,13 @@
  * - Real-time frame capture using MMAP
  * - YUYV to RGB conversion
  * - Frame data output via Pad callbacks
+ * - File mode for testing without camera
  * 
  * Usage:
- *   ./11_camera_capture_x86 [device] [width] [height]
+ *   ./11_camera_capture_x86 [device|file] [width] [height]
  *   
- *   Default: /dev/video0 640x480
- *   Example: ./11_camera_capture_x86 /dev/video0 1280 720
+ *   Device Mode (default): ./11_camera_capture_x86 /dev/video0 640 480
+ *   File Mode: ./11_camera_capture_x86 file:/path/to/video.rgb 640 480
  * 
  * Prerequisites:
  *   - Linux system with V4L2 support
@@ -49,20 +50,36 @@ int main(int argc, char* argv[]) {
     
     // Parse command line arguments
     std::string device = "/dev/video0";
+    std::string fileUri;
+    bool fileMode = false;
     unsigned width = 640;
     unsigned height = 480;
-    
-    if (argc > 1) device = argv[1];
+
+    if (argc > 1) {
+        std::string arg1 = argv[1];
+        if (arg1.size() >= 5 && arg1.substr(0, 5) == "file:") {
+            fileMode = true;
+            fileUri = arg1;
+            device.clear();
+        } else {
+            device = arg1;
+        }
+    }
     if (argc > 2) width = static_cast<unsigned>(std::stoul(argv[2]));
     if (argc > 3) height = static_cast<unsigned>(std::stoul(argv[3]));
-    
-    std::cout << "Camera device: " << device << std::endl;
+
+    if (fileMode) {
+        std::cout << "File mode: " << fileUri << std::endl;
+    } else {
+        std::cout << "Camera device: " << device << std::endl;
+    }
     std::cout << "Resolution: " << width << "x" << height << std::endl;
     std::cout << std::endl;
-    
+
     // Create camera source node
     VideoSourceConfig cfg;
     cfg.device = device;
+    cfg.uri = fileUri;
     cfg.width = width;
     cfg.height = height;
     cfg.fps = 30;
