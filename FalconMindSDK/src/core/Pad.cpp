@@ -52,6 +52,13 @@ bool Pad::disconnect() {
 void Pad::pushToConnections(const void* data, size_t size) const {
     // Source和Both Pad都可以推送数据
     if ((type_ != PadType::Source && type_ != PadType::Both) || !data) return;
+    
+    // 首先调用自身的回调（用于直接接收模式）
+    if (dataCallback_) {
+        dataCallback_(data, size);
+    }
+    
+    // 然后推送到所有连接的Sink Pad
     for (const auto& conn : connections_) {
         if (auto target = conn.targetPad.lock()) {
             DataCallback cb = target->getDataCallback();

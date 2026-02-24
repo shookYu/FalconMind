@@ -287,8 +287,8 @@ void CameraSourceNode::process() {
         return;
     }
 
-    std::cout << "[CameraSourceNode] process: stub (no frame) from "
-              << (config_.device.empty() ? config_.uri : config_.device) << std::endl;
+    // No frame available in current mode - device may not be configured
+    // V4L2 mode and file mode handle frames above, this only executes when neither is active
 }
 
 } // namespace falconmind::sdk::sensors

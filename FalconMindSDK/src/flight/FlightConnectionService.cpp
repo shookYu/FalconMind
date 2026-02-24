@@ -29,6 +29,28 @@ bool FlightConnectionService::connect(const FlightConnectionConfig& cfg) {
     }
 
     cfg_ = cfg;
+    
+    // 允许地址重用
+    int reuse = 1;
+    if (::setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+        std::perror("setsockopt SO_REUSEADDR");
+    }
+    
+    // 绑定到本地端口，用于接收PX4发送的数据
+    sockaddr_in localAddr{};
+    localAddr.sin_family = AF_INET;
+    localAddr.sin_addr.s_addr = INADDR_ANY;
+    localAddr.sin_port = htons(static_cast<uint16_t>(cfg_.remotePort));
+    
+    if (::bind(sock_, reinterpret_cast<sockaddr*>(&localAddr), sizeof(localAddr)) < 0) {
+        std::perror("bind");
+        ::close(sock_);
+        sock_ = -1;
+        return false;
+    }
+    
+    std::cout << "[FlightConnectionService] Bound to port " << cfg_.remotePort << std::endl;
+    
     // 设置为非阻塞，用于 pollState() 非阻塞读取
     int flags = fcntl(sock_, F_GETFL, 0);
     if (flags >= 0) {
@@ -111,6 +133,13 @@ std::optional<FlightState> FlightConnectionService::pollState() {
         msgid = buf[7]; // 我们当前只关心低 8 位
         payload = &buf[10];
     }
+    
+    // Debug: print received msgid
+    static int debug_counter = 0;
+    if (++debug_counter % 10 == 0) {
+        std::cout << "[FlightConnectionService] Received msgid=" << (int)msgid 
+                  << " len=" << (int)len << " stx=0x" << std::hex << (int)stx << std::dec << std::endl;
+    }
 
     // 解析 MAVLink v1 GLOBAL_POSITION_INT (msgid 33) 和 ATTITUDE (msgid 30)
     std::lock_guard<std::mutex> lk(stateMutex_);
@@ -151,14 +180,84 @@ std::optional<FlightState> FlightConnectionService::pollState() {
         // uint32 time_boot_ms
         // float roll, pitch, yaw, rollspeed, pitchspeed, yawspeed
         float roll = 0.f, pitch = 0.f, yaw = 0.f;
+        float rollspeed = 0.f, pitchspeed = 0.f, yawspeed = 0.f;
         std::size_t off = 4;
         std::memcpy(&roll,  payload + off, 4); off += 4;
         std::memcpy(&pitch, payload + off, 4); off += 4;
         std::memcpy(&yaw,   payload + off, 4); off += 4;
+        std::memcpy(&rollspeed,  payload + off, 4); off += 4;
+        std::memcpy(&pitchspeed, payload + off, 4); off += 4;
+        std::memcpy(&yawspeed,   payload + off, 4);
 
         lastState_.roll  = static_cast<double>(roll);
         lastState_.pitch = static_cast<double>(pitch);
         lastState_.yaw   = static_cast<double>(yaw);
+        // Gyro data from attitude rates
+        lastState_.gx = static_cast<double>(rollspeed);
+        lastState_.gy = static_cast<double>(pitchspeed);
+        lastState_.gz = static_cast<double>(yawspeed);
+
+        return lastState_;
+    } else if (msgid == 105 && len >= 61) { // HIGHRES_IMU
+        // payload 布局（小端）：
+        // uint64 time_usec
+        // float xacc, yacc, zacc (m/s^2)
+        // float xgyro, ygyro, zgyro (rad/s)
+        // float xmag, ymag, zmag
+        // float abs_pressure
+        // float diff_pressure
+        // float pressure_alt
+        // float temperature
+        // uint16 fields_updated
+        float xacc = 0.f, yacc = 0.f, zacc = 0.f;
+        float xgyro = 0.f, ygyro = 0.f, zgyro = 0.f;
+        std::size_t off = 8; // 跳过 time_usec
+        std::memcpy(&xacc,  payload + off, 4); off += 4;
+        std::memcpy(&yacc,  payload + off, 4); off += 4;
+        std::memcpy(&zacc,  payload + off, 4); off += 4;
+        std::memcpy(&xgyro, payload + off, 4); off += 4;
+        std::memcpy(&ygyro, payload + off, 4); off += 4;
+        std::memcpy(&zgyro, payload + off, 4);
+
+        lastState_.ax = static_cast<double>(xacc);
+        lastState_.ay = static_cast<double>(yacc);
+        lastState_.az = static_cast<double>(zacc);
+        lastState_.gx = static_cast<double>(xgyro);
+        lastState_.gy = static_cast<double>(ygyro);
+        lastState_.gz = static_cast<double>(zgyro);
+        
+        static int imuDebug = 0;
+        if (++imuDebug % 100 == 0) {
+            std::cout << "[FlightConnectionService] Parsed HIGHRES_IMU: ax=" << lastState_.ax 
+                      << " ay=" << lastState_.ay << " az=" << lastState_.az << std::endl;
+        }
+
+        return lastState_;
+    } else if (msgid == 24 && len >= 30) { // GPS_RAW_INT
+        // payload 布局（小端）：
+        // uint64 time_usec
+        // uint8 fix_type
+        // int32 lat
+        // int32 lon
+        // int32 alt (mm)
+        // uint16 eph (hdop * 100)
+        // uint16 epv
+        // uint16 vel
+        // uint16 cog
+        // uint8 satellites_visible
+        std::uint8_t fixType = 0;
+        std::uint8_t numSats = 0;
+        std::uint16_t eph = 9999;
+        std::size_t off = 8; // 跳过 time_usec
+        std::memcpy(&fixType, payload + off, 1); off += 1;
+        off += 1; // 跳过 lat, lon, alt for now (use GLOBAL_POSITION_INT instead)
+        std::memcpy(&eph, payload + off + 12, 2);
+        off = 8 + 1 + 1 + 4 + 4 + 4 + 2 + 2 + 2 + 2; // 定位到 satellites_visible
+        std::memcpy(&numSats, payload + off, 1);
+
+        lastState_.gpsFixType = static_cast<int>(fixType);
+        lastState_.numSat = static_cast<int>(numSats);
+        lastState_.hdop = static_cast<double>(eph) / 100.0;
 
         return lastState_;
     }

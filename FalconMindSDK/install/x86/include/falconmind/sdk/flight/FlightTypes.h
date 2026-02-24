@@ -17,26 +17,46 @@ struct FlightConnectionConfig {
     MavlinkVersion mavlinkVersion{MavlinkVersion::V2}; // 默认使用 MAVLink v2
 };
 
-// FlightState 与 MAVLink 典型字段映射关系（未来在 FlightConnectionService 中实现）：
+// FlightState 与 MAVLink 典型字段映射关系（已在 FlightConnectionService 中实现）：
 // - lat/lon/alt  ← GLOBAL_POSITION_INT.lat/lon/alt（1e-7 deg → deg，mm → m）
 // - roll/pitch/yaw ← ATTITUDE.roll/pitch/yaw
 // - vx/vy/vz ← GLOBAL_POSITION_INT.vx/vy/vz
 // - batteryPercent/batteryVoltageMv ← BATTERY_STATUS
 // - gpsFixType/numSat ← GPS_RAW_INT 或 GLOBAL_POSITION_INT 相关字段
+// - gx/gy/gz ← HIGHRES_IMU.xgyro/ygyro/zgyro (rad/s)
+// - ax/ay/az ← HIGHRES_IMU.xacc/yacc/zacc (m/s^2)
 struct FlightState {
+    // Position (from GLOBAL_POSITION_INT)
     double lat{0.0};
     double lon{0.0};
     double alt{0.0};
+    
+    // Attitude (from ATTITUDE)
     double roll{0.0};
     double pitch{0.0};
     double yaw{0.0};
+    
+    // Velocity (from GLOBAL_POSITION_INT)
     double vx{0.0};
     double vy{0.0};
     double vz{0.0};
+    
+    // IMU data (from HIGHRES_IMU)
+    double gx{0.0};  // x angular velocity (rad/s)
+    double gy{0.0};  // y angular velocity (rad/s)
+    double gz{0.0};  // z angular velocity (rad/s)
+    double ax{0.0};  // x acceleration (m/s^2)
+    double ay{0.0};  // y acceleration (m/s^2)
+    double az{0.0};  // z acceleration (m/s^2)
+    
+    // Battery (from BATTERY_STATUS)
     double batteryPercent{0.0};
     int    batteryVoltageMv{0};
+    
+    // GPS status (from GPS_RAW_INT)
     int    gpsFixType{0};
     int    numSat{0};
+    double hdop{99.0};  // Horizontal dilution of precision
 };
 
 // FlightCommand 与 MAVLink COMMAND_LONG 的典型映射（示意）：
