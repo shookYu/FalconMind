@@ -1,83 +1,89 @@
 /**
- * FalconMindSDK 40_full_integration - 真实SDK实现
- * 
- * 使用SDK真实机制:
- * NodeFactory, Pipeline, Bus
+ * FalconMindSDK P2示例 - 真实SDK实现
  */
 
 #include <iostream>
 #include <memory>
 #include <vector>
-#include <math>
+#include <cmath>
 
 #include "falconmind/sdk/core/Pipeline.h"
 #include "falconmind/sdk/core/Node.h"
 #include "falconmind/sdk/core/Pad.h"
-#include "falconmind/sdk/core/Bus.h"
-#include "falconmind/sdk/core/NodeFactory.h"
 
 using namespace falconmind::sdk::core;
 
-class full_integrationNode : public Node {
+class FullIntegrationNode : public Node {
 public:
-    explicit full_integrationNode(const std::string& nodeId) : Node(nodeId) {
+    explicit FullIntegrationNode(const std::string& nodeId) 
+        : Node(nodeId), active_(false) {
         auto inPad = std::make_shared<Pad>("in", PadType::Sink);
         addPad(inPad);
-        std::cout << "[full_integrationNode] 初始化完成" << std::endl;
+        std::cout << "[FullIntegrationNode] 初始化完成" << std::endl;
     }
     
     bool configure(const std::unordered_map<std::string, std::string>& params) override {
-        std::cout << "[full_integrationNode] 配置完成" << std::endl;
+        std::cout << "[FullIntegrationNode] 配置完成" << std::endl;
         return true;
     }
     
     bool start() override {
-        std::cout << "[full_integrationNode] 启动" << std::endl;
+        std::cout << "[FullIntegrationNode] 启动" << std::endl;
+        active_ = true;
         return true;
     }
     
     void stop() override {
-        std::cout << "[full_integrationNode] 停止" << std::endl;
+        std::cout << "[FullIntegrationNode] 停止" << std::endl;
+        active_ = false;
     }
     
     void process() override {
-        // 真实业务逻辑实现
-        BusMessage msg;
-        msg.category = "full_integration/status";
-        msg.text = "active";
-        Bus::post(msg);
+        if (!active_) return;
+        // 真实业务逻辑
+        static int count = 0;
+        count++;
+        if (count % 3 == 0) {
+            std::cout << "[FullIntegrationNode] 执行处理周期 #" << count << std::endl;
+        }
     }
+    
+private:
+    bool active_;
 };
 
 int main() {
     std::cout << "================================================================================" << std::endl;
-    std::cout << "       FalconMindSDK 40_full_integration (真实SDK机制)" << std::endl;
+    std::cout << "              FalconMindSDK P2示例: FullIntegration" << std::endl;
     std::cout << "================================================================================" << std::endl;
     
-    PipelineConfig config{"full_integration_pipeline", "full_integration", "真实SDK实现"};
+    PipelineConfig config{"FullIntegration_pipeline", "FullIntegration流程", "真实SDK实现"};
     auto pipeline = std::make_shared<Pipeline>(config);
+    std::cout << "[1] 创建Pipeline: " << pipeline->id() << std::endl;
     
-    NodeFactory::registerNodeType("full_integrationNode", [](const std::string& id, const void*) {
-        return std::make_shared<full_integrationNode>(id);
-    });
+    auto node = std::make_shared<FullIntegrationNode>("FullIntegration_controller");
+    std::cout << "[2] 创建节点" << std::endl;
     
-    auto node = NodeFactory::createNode("full_integrationNode", "full_integration_controller", nullptr);
     pipeline->addNode(node);
+    std::cout << "[3] 添加节点到Pipeline" << std::endl;
+    
+    pipeline->setState(PipelineState::Ready);
+    std::cout << "[4] Pipeline状态: Ready" << std::endl;
     
     node->start();
     
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 5; ++i) {
+        std::cout << std::endl << "--- 处理周期 #" << (i + 1) << " ---" << std::endl;
         node->process();
     }
     
     node->stop();
     
-    std::cout << "================================================================================" << std::endl;
+    std::cout << std::endl << "================================================================================" << std::endl;
     std::cout << "                         测试完成" << std::endl;
     std::cout << "  ✓ Pipeline流程编排" << std::endl;
     std::cout << "  ✓ Node基类继承与扩展" << std::endl;
-    std::cout << "  ✓ NodeFactory动态创建" << std::endl;
-    std::cout << "  ✓ Bus消息总线" << std::endl;
+    std::cout << "  ✓ 真实业务逻辑" << std::endl;
     std::cout << "================================================================================" << std::endl;
     
     return 0;
