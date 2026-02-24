@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <cmath>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 
 struct ImuData {
     double ax, ay, az;

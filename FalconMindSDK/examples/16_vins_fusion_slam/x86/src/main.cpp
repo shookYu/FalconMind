@@ -6,7 +6,8 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <math>
+#include <cmath>
+#include <cstring>
 #include <string>
 #include <chrono>
 #include <thread>
@@ -15,6 +16,7 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <tuple>
 
 #include "falconmind/sdk/core/Pipeline.h"
 #include "falconmind/sdk/core/Node.h"

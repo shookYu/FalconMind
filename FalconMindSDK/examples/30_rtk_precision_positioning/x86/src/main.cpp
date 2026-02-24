@@ -1,8 +1,9 @@
+#include <vector>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 
 struct GnssRaw {
     double pseudorange;

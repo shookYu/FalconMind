@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 
 struct CameraFrame {
     int cameraId;

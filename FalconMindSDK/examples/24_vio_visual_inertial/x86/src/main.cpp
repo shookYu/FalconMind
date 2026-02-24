@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <vector>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 
 struct Feature {
     float u, v;

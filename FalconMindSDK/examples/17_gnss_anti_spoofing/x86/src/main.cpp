@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 #include "falconmind/sdk/sensors/GnssSourceNode.h"
 
 using namespace falconmind::sdk::sensors;

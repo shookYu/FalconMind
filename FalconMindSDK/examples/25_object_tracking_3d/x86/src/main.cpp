@@ -3,7 +3,7 @@
 #include <vector>
 #include <cmath>
 
-#include "falconmind/sdk/sdk.h"
+// SDK includes
 
 struct Detection3D {
     float x, y, z;
