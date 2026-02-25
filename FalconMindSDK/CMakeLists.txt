@@ -102,17 +102,14 @@ add_library(falconmind_sdk
     src/perception/PerceptionPluginManager.cpp
     src/perception/OnnxRuntimeDetectorBackend.cpp
     src/perception/RknnDetectorBackend.cpp
-    src/perception/TensorRtDetectorBackend.cpp
+
     src/perception/DetectorConfigLoader.cpp
     src/perception/DetectionResultPacket.cpp
     src/perception/YoloPrePostProcess.cpp
     src/perception/SimpleTrackerBackend.cpp
     src/perception/SortTrackerBackend.cpp
     src/perception/TrackingTransformNode.cpp
-    src/perception/VisualSlamNode.cpp
-    src/perception/LidarSlamNode.cpp
-    src/perception/EnvironmentDetectionNode.cpp
-    src/perception/LowLightAdaptationNode.cpp
+    # src/perception/VisualSlamNode.cpp  # FIXME: header issues
     src/perception/SlamServiceClientFromFile.cpp
     src/cluster/ClusterStateSourceNode.cpp
     src/mission/BehaviorTree.cpp
@@ -120,6 +117,7 @@ add_library(falconmind_sdk
     src/mission/EventReporterNode.cpp
     src/mission/SearchMissionAction.cpp
     src/telemetry/TelemetryPublisher.cpp
+    src/high_level/PerceptionPipeline.cpp
 )
 
 # 为Python绑定添加-fPIC编译选项（Position Independent Code）
@@ -210,6 +208,7 @@ if(FALCONMINDSDK_BUILD_RKNN_BACKEND)
 endif()
 if(FALCONMINDSDK_BUILD_TENSORRT_BACKEND)
     # find_package(TensorRT REQUIRED) 等
+    target_sources(falconmind_sdk PRIVATE src/perception/TensorRtDetectorBackend.cpp)
     target_compile_definitions(falconmind_sdk PRIVATE FALCONMINDSDK_TENSORRT_BACKEND_ENABLED=1)
     message(STATUS "FalconMindSDK: TensorRT backend enabled (ensure TensorRT is linked)")
 endif()

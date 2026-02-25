@@ -20,10 +20,11 @@
 #include <chrono>
 #include <mutex>
 #include <string>
-#include <math>
+#include <cmath>
 #include <queue>
 #include <vector>
 #include <atomic>
+#include <cstring>
 
 #ifdef __linux__
 #include <sys/socket.h>
@@ -596,13 +597,13 @@ void LidarSourceNode::applyMotionCompensation(PointCloud& cloud,
                                                uint64_t targetTime) {
     if (!config_.enableMotionCompensation || cloud.empty()) return;
     
-    // 简化的运动补偿：基于IMU速度估计
-    double dt = (targetTime - imu.sampleTimeNs) * 1e-9;
+    // 简化的运动补偿：基于IMU加速度估计（积分得到速度）
+    double dt = (targetTime - imu.timestampNs) * 1e-9;
     
-    // 假设匀速运动模型
-    float dx = imu.vx * dt;
-    float dy = imu.vy * dt;
-    float dz = imu.vz * dt;
+    // 使用加速度积分估算位移（简化模型）
+    float dx = 0.5f * imu.ax * dt * dt;
+    float dy = 0.5f * imu.ay * dt * dt;
+    float dz = 0.5f * imu.az * dt * dt;
     
     for (auto& point : cloud) {
         point.x += dx;

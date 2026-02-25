@@ -20,7 +20,7 @@
 #include <chrono>
 #include <string>
 #include <queue>
-#include <math>
+#include <cmath>
 
 #ifdef __linux__
 #include <sys/socket.h>
