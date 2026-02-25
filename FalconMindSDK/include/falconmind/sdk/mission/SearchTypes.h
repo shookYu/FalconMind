@@ -30,7 +30,17 @@ struct SearchArea {
 };
 
 // 搜索参数
+// 搜索参数
 struct SearchParams {
+    SearchPattern pattern;          // 搜索模式
+    double altitude;                // 飞行高度（米）
+    double speed;                   // 飞行速度（m/s）
+    double spacing;                 // 搜索线间距（米，用于网格搜索）
+    double loiterTime;              // 每个航点悬停时间（秒）
+    double waypointTolerance = 5.0; // 航点到达容差（米）
+    bool enableDetection;           // 是否启用目标检测
+    std::vector<std::string> detectionClasses; // 关注的检测类别
+};
     SearchPattern pattern;          // 搜索模式
     double altitude;                // 飞行高度（米）
     double speed;                   // 飞行速度（m/s）
@@ -49,7 +59,15 @@ struct SearchProgress {
 };
 
 // 搜索事件类型
+// 搜索事件类型
 enum class SearchEventType {
+    TARGET_DETECTED,    // 目标检测
+    INTEREST_POINT,     // 兴趣点
+    ANOMALY,            // 异常
+    WAYPOINT_REACHED,   // 到达航点
+    WAYPOINT_TIMEOUT,   // 航点超时
+    SEARCH_COMPLETE     // 搜索完成
+};
     TARGET_DETECTED,    // 目标检测
     INTEREST_POINT,     // 兴趣点
     ANOMALY,            // 异常

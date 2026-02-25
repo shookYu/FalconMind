@@ -38,7 +38,35 @@ public:
 
 private:
     // 任务状态
+    // 任务状态
     enum class MissionState {
+        IDLE,
+        ARMING,
+        TAKING_OFF,
+        UPLOADING_MISSION,
+        EXECUTING_MISSION,
+        SEARCHING,
+        RETURNING,
+        LANDING,
+        DISARMING,
+        COMPLETE
+    };
+
+    // 执行航点任务
+    NodeStatus executeWaypointMission();
+    
+    // 检查是否到达航点
+    bool isWaypointReached(const GeoPoint& waypoint, const GeoPoint& currentPos, double tolerance = 5.0);
+    
+    // MAVLink航点协议
+    bool uploadMissionToPX4(const std::vector<Waypoint>& waypoints);
+    bool sendMissionCount(int count);
+    bool waitAndSendWaypoint(int seq, const Waypoint& wp);
+    bool waitForMissionAck();
+    bool startMissionExecution();
+    
+    // 重置任务
+    void reset();
         IDLE,
         ARMING,
         TAKING_OFF,
@@ -59,7 +87,19 @@ private:
     std::shared_ptr<EventReporterNode> eventReporter_;
     
     SearchArea searchArea_;
+    SearchArea searchArea_;
     SearchParams searchParams_;
+    MissionState state_{MissionState::IDLE};
+    int currentWaypointIndex_{0};
+    bool armingDone_{false};
+    bool takeoffDone_{false};
+    bool waypointsUploaded_{false};
+    
+    // 航点执行
+    uint64_t missionStartTime_{0};
+    uint64_t lastWaypointTime_{0};
+    int waypointRetryCount_{0};
+    int maxWaypointRetries_{3};
     MissionState state_{MissionState::IDLE};
     int currentWaypointIndex_{0};
     bool armingDone_{false};

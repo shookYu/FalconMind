@@ -7,9 +7,9 @@ set(CMAKE_BUILD_TYPE Release)
 
 # FalconMindSDK路径配置
 set(FALCONMIND_SDK_DIR "/home/shook/study/opencode/FalconMindSDK")
-set(FALCONMIND_SDK_INSTALL "${FALCONMIND_SDK_DIR}/install/x86")
+set(FALCONMIND_SDK_INSTALL "${FALCONMIND_SDK_DIR}/build")
 set(FALCONMIND_SDK_INCLUDE "${FALCONMIND_SDK_INSTALL}/include")
-set(FALCONMIND_SDK_LIB "${FALCONMIND_SDK_INSTALL}/lib/libfalconmind_sdk.a")
+set(FALCONMIND_SDK_LIB "${FALCONMIND_SDK_DIR}/build/libfalconmind_sdk.a")
 
 # 检查SDK库是否存在
 if(NOT EXISTS "${FALCONMIND_SDK_LIB}")

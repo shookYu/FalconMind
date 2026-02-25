@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 project(36_geofence_monitoring_x86 LANGUAGES CXX)
 
+find_package(Eigen3 REQUIRED)
+project(36_geofence_monitoring_x86 LANGUAGES CXX)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
@@ -24,6 +27,7 @@ add_executable(36_geofence_monitoring_x86 ${SOURCES})
 
 # 头文件路径
 target_include_directories(36_geofence_monitoring_x86 PRIVATE
+    ${EIGEN3_INCLUDE_DIR}
     ${FALCONMIND_SDK_INCLUDE}
 )
 
