@@ -125,9 +125,20 @@ Result<PluginLoadResult> PluginManager::loadPlugin(
     LibraryHandle library = std::move(libResult.value());
     
     // 获取导出函数
-    auto createFunc = library.getSymbol<CreatePluginFunc>("createPlugin");
-    auto destroyFunc = library.getSymbol<DestroyPluginFunc>("destroyPlugin");
-    auto getVersionFunc = library.getSymbol<const char* (*)()>("getPluginSDKVersion");
+    auto createFuncPtr = library.getSymbol<CreatePluginFunc>("createPlugin");
+    auto destroyFuncPtr = library.getSymbol<DestroyPluginFunc>("destroyPlugin");
+    auto getVersionFuncPtr = library.getSymbol<const char* (*)()>("getPluginSDKVersion");
+    
+    if (!createFuncPtr || !destroyFuncPtr || !getVersionFuncPtr) {
+        return Error(ErrorCode::InvalidArgument, 
+                    "Missing required exports in plugin",
+                    "Plugin must export: createPlugin, destroyPlugin, getPluginSDKVersion");
+    }
+    
+    // 解引用函数指针
+    CreatePluginFunc createFunc = *createFuncPtr;
+    DestroyPluginFunc destroyFunc = *destroyFuncPtr;
+    auto getVersionFunc = *getVersionFuncPtr;
     
     if (!createFunc || !destroyFunc || !getVersionFunc) {
         return Error(ErrorCode::InvalidArgument, 
@@ -175,6 +186,12 @@ Result<PluginLoadResult> PluginManager::loadPlugin(
     plugin->version = metadata.version;
     plugin->type = metadata.type;
     plugin->state = PluginState::Loaded;
+    plugin->library = std::move(library);
+    plugin->instance = instance;
+    plugin->createFunc = createFuncPtr ? *createFuncPtr : nullptr;
+    plugin->destroyFunc = destroyFuncPtr ? *destroyFuncPtr : nullptr;
+    plugin->getSDKVersionFunc = getVersionFuncPtr ? *getVersionFuncPtr : nullptr;
+    plugin->lastModified = std::filesystem::last_write_time(path);
     plugin->library = std::move(library);
     plugin->instance = instance;
     plugin->createFunc = createFunc;
@@ -457,17 +474,15 @@ Result<void> PluginManager::initializePlugin(
     plugin.state = PluginState::Initializing;
     notifyStateChange(plugin.name, oldState, PluginState::Initializing);
     
-    // 合并配置
-    ConfigManager mergedConfig = config_;
-    mergedConfig.merge(config);
-    
+    // 使用传入的配置（ConfigManager不可复制，直接使用引用）
+    // 注意：ConfigManager包含mutex/thread成员，无法复制
     // 设置默认配置
     if (config_.defaultConfigs.find(plugin.name) != config_.defaultConfigs.end()) {
         // 从默认配置加载
     }
     
     // 初始化
-    if (!plugin.instance->initialize(mergedConfig)) {
+    if (!plugin.instance->initialize(config)) {
         plugin.state = PluginState::Error;
         return Error(ErrorCode::NodeConfigurationFailed, 
                     "Plugin initialization failed: " + plugin.name);
