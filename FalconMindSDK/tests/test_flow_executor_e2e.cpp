@@ -68,7 +68,13 @@ void test_complete_flow_execution() {
     })";
     
     // 加载Flow
-    assert(executor.loadFlow(flow_json));
+    // 加载Flow
+    bool loaded = executor.loadFlow(flow_json);
+    assert(loaded);
+    
+    // 启动Flow（Pipeline在start时创建）
+    bool started = executor.start();
+    assert(started);
     
     // 启动Flow（Pipeline在start时创建）
     assert(executor.start());
@@ -150,7 +156,10 @@ void test_multi_node_flow() {
         ]
     })";
     
-    assert(executor.loadFlow(flow_json));
+    bool loaded2 = executor.loadFlow(flow_json);
+    assert(loaded2);
+    bool started2 = executor.start();
+    assert(started2);
     assert(executor.start());
     assert(executor.isRunning());
     
