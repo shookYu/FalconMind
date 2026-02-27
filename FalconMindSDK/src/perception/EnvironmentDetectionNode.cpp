@@ -1,3 +1,4 @@
+#include <numeric>
 /**
  * FalconMindSDK - Environment Detection Node Implementation
  * 
@@ -228,19 +229,19 @@ void EnvironmentDetectionNode::onGnssData(const void* data, size_t size) {
     const float HIGH_HDOP_THRESHOLD = 5.0f;
     const int MIN_SATELLITES = 6;
     
-    if (gnss->hdop > HIGH_HDOP_THRESHOLD || gnss->satellitesUsed < MIN_SATELLITES) {
+    if (gnss->hdop > HIGH_HDOP_THRESHOLD || gnss->numSatellites < MIN_SATELLITES) {
         if (currentState_ != EnvironmentState::GpsDenied) {
             currentState_ = EnvironmentState::GpsDenied;
             
             // 计算置信度
             float hdopConfidence = std::min(1.0f, (gnss->hdop - HIGH_HDOP_THRESHOLD) / 5.0f);
             float satConfidence = std::min(1.0f, 
-                static_cast<float>(MIN_SATELLITES - gnss->satellitesUsed) / MIN_SATELLITES);
+                static_cast<float>(MIN_SATELLITES - gnss->numSatellites) / MIN_SATELLITES);
             confidence_ = std::max(hdopConfidence, satConfidence);
             
             std::cout << "[EnvironmentDetectionNode] GPS denied environment!"
                       << " HDOP: " << gnss->hdop
-                      << " Satellites: " << gnss->satellitesUsed
+                      << " Satellites: " << gnss->numSatellites
                       << " Confidence: " << confidence_ << std::endl;
             
             publishStatus();

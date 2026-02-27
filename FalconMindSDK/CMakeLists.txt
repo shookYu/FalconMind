@@ -23,6 +23,7 @@ endif()
 option(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND "Build with real ONNXRuntime inference backend (requires ONNXRuntime)" OFF)
 option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with real RKNN inference backend (requires RKNN-Toolkit2/board lib)" OFF)
 option(FALCONMINDSDK_BUILD_TENSORRT_BACKEND "Build with real TensorRT inference backend (requires TensorRT+CUDA)" OFF)
+option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
 
 # 设置第三方依赖库安装目录
 set(FALCONMINDSDK_DEPEND_INSTALL_PREFIX "3rd/install/x86" CACHE STRING "依赖库安装目录 (3rd/install/x86 或 3rd/install/arm64)")
@@ -99,25 +100,36 @@ add_library(falconmind_sdk
     src/sensors/ImuSourceNode.cpp
     src/sensors/GnssSourceNode.cpp
     src/perception/DummyDetectionNode.cpp
+    src/perception/TrackingTransformNode.cpp
+    src/perception/PerceptionPluginManager.cpp
     src/perception/PerceptionPluginManager.cpp
     src/perception/OnnxRuntimeDetectorBackend.cpp
     src/perception/RknnDetectorBackend.cpp
+    # src/perception/TensorRtDetectorBackend.cpp  # FIXME: requires CUDA
+    src/perception/EnvironmentDetectionNode.cpp
+    src/perception/LowLightAdaptationNode.cpp
+    # src/perception/VisualSlamNode.cpp  # FIXME: requires VINS-Fusion
+    src/perception/LidarSlamNode.cpp
 
     src/perception/DetectorConfigLoader.cpp
     src/perception/DetectionResultPacket.cpp
     src/perception/YoloPrePostProcess.cpp
     src/perception/SimpleTrackerBackend.cpp
     src/perception/SortTrackerBackend.cpp
-    src/perception/TrackingTransformNode.cpp
-    # src/perception/VisualSlamNode.cpp  # FIXME: header issues
+    # # src/perception/VisualSlamNode.cpp  # FIXME: requires VINS-Fusion  # FIXME: header issues
     src/perception/SlamServiceClientFromFile.cpp
     src/cluster/ClusterStateSourceNode.cpp
     src/mission/BehaviorTree.cpp
     src/mission/SearchPathPlannerNode.cpp
     src/mission/EventReporterNode.cpp
     src/mission/SearchMissionAction.cpp
+    src/mission/GeofenceMonitorNode.cpp
     src/telemetry/TelemetryPublisher.cpp
     src/high_level/PerceptionPipeline.cpp
+    src/high_level/MissionPipeline.cpp
+    src/high_level/FlightPipeline.cpp
+    src/high_level/MavlinkClient.cpp
+    src/flight/GeofenceMonitorNode.cpp
 )
 
 # 为Python绑定添加-fPIC编译选项（Position Independent Code）
@@ -125,6 +137,29 @@ if(FALCONMINDSDK_BUILD_PYTHON)
     set_target_properties(falconmind_sdk PROPERTIES
         POSITION_INDEPENDENT_CODE ON
     )
+endif()
+
+# ROS2集成
+if(FALCONMINDSDK_BUILD_ROS2)
+    find_package(rclcpp QUIET)
+    find_package(geometry_msgs QUIET)
+    find_package(sensor_msgs QUIET)
+    find_package(nav_msgs QUIET)
+    
+    if(rclcpp_FOUND AND geometry_msgs_FOUND AND sensor_msgs_FOUND AND nav_msgs_FOUND)
+        message(STATUS "ROS2 found - enabling ROS2 bridge")
+        target_compile_definitions(falconmind_sdk PUBLIC FALCONMINDSDK_WITH_ROS2)
+        target_sources(falconmind_sdk PRIVATE src/ros2/FalconMindROS2Node.cpp)
+        target_link_libraries(falconmind_sdk PUBLIC
+            rclcpp::rclcpp
+            geometry_msgs::geometry_msgs__rosidl_typesupport_cpp
+            sensor_msgs::sensor_msgs__rosidl_typesupport_cpp
+            nav_msgs::nav_msgs__rosidl_typesupport_cpp
+        )
+    else()
+        message(WARNING "ROS2 packages not found - ROS2 bridge disabled")
+        set(FALCONMINDSDK_BUILD_ROS2 OFF)
+    endif()
 endif()
 
 target_include_directories(falconmind_sdk

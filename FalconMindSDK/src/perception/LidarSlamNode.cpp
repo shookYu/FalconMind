@@ -265,7 +265,7 @@ void LidarSlamNode::processPointCloud(const PointCloud& cloud) {
                   << " | Edges: " << edgeFeatures.size()
                   << " | Planars: " << planarFeatures.size()
                   << " | Time: " << duration << "ms"
-                  <> std::endl;
+                  << std::endl;
     }
 }
 

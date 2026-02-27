@@ -7,10 +7,15 @@
 #include "falconmind/sdk/sensors/VideoSourceConfig.h"
 #include "falconmind/sdk/perception/DummyDetectionNode.h"
 #include "falconmind/sdk/perception/TrackingTransformNode.h"
+// FIXME: Implementation has header mismatch - FIXED
 #include "falconmind/sdk/perception/EnvironmentDetectionNode.h"
 #include "falconmind/sdk/perception/LowLightAdaptationNode.h"
 #include "falconmind/sdk/perception/VisualSlamNode.h"
 #include "falconmind/sdk/perception/LidarSlamNode.h"
+// #include "falconmind/sdk/perception/EnvironmentDetectionNode.h"
+// #include "falconmind/sdk/perception/LowLightAdaptationNode.h"
+// #include "falconmind/sdk/perception/VisualSlamNode.h"
+// #include "falconmind/sdk/perception/LidarSlamNode.h"
 #include "falconmind/sdk/cluster/ClusterStateSourceNode.h"
 
 #include <iostream>
@@ -154,38 +159,40 @@ void NodeFactory::initializeDefaultTypes() {
             return node;
         });
 
-    // 注册环境检测节点
+    // EnvironmentDetectionNode - FIXED
     registerNodeType("environment_detection",
         [](const std::string& node_id, const void* /*params*/) -> std::shared_ptr<Node> {
             auto node = std::make_shared<perception::EnvironmentDetectionNode>();
             node->setId(node_id);
             return node;
         });
-
-    // 注册低照度/相机切换节点
+    
+    // LowLightAdaptationNode - FIXED
     registerNodeType("low_light_adaptation",
         [](const std::string& node_id, const void* /*params*/) -> std::shared_ptr<Node> {
             auto node = std::make_shared<perception::LowLightAdaptationNode>();
             node->setId(node_id);
             return node;
         });
-
-    // 注册视觉 SLAM 节点
+    
+    // VisualSlamNode - FIXME: requires VINS-Fusion 3rd party (disabled)
+#if 0
     registerNodeType("visual_slam",
         [](const std::string& node_id, const void* /*params*/) -> std::shared_ptr<Node> {
             auto node = std::make_shared<perception::VisualSlamNode>();
             node->setId(node_id);
             return node;
         });
-
-    // 注册激光 SLAM 节点
+#endif
+    
+    // LidarSlamNode - FIXED
     registerNodeType("lidar_slam",
         [](const std::string& node_id, const void* /*params*/) -> std::shared_ptr<Node> {
             auto node = std::make_shared<perception::LidarSlamNode>();
             node->setId(node_id);
             return node;
         });
-
+    
     // 注册集群状态源节点（PRD 3.1.2.2 集群与协同模块）
     registerNodeType("cluster_state_source",
         [](const std::string& node_id, const void* /*params*/) -> std::shared_ptr<Node> {

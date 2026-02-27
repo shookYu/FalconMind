@@ -6,6 +6,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <unordered_map>
+#include <memory>
 #include "falconmind/sdk/core/Node.h"
 #include "falconmind/sdk/perception/PoseTypes.h"
 
