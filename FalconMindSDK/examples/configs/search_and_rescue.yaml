@@ -1,0 +1,219 @@
+# FalconMindSDK 搜索救援任务配置示例
+# 这是一个完整的搜索救援任务配置，展示新SDK功能
+
+mission:
+  name: "山区搜索失踪人员"
+  type: search_and_rescue
+  id: sar_mission_001
+  
+# 搜索区域配置
+search_area:
+  type: polygon  # polygon, circle, or corridor
+  polygon:
+    - { lat: 31.2304, lon: 121.4737, alt: 0 }
+    - { lat: 31.2404, lon: 121.4737, alt: 0 }
+    - { lat: 31.2404, lon: 121.4837, alt: 0 }
+    - { lat: 31.2304, lon: 121.4837, alt: 0 }
+  # 或者使用圆形区域
+  # circle:
+  #   center: { lat: 31.2354, lon: 121.4787, alt: 0 }
+  #   radius: 500  # meters
+
+# 飞行参数
+flight:
+  altitude: 80          # 飞行高度（米）
+  speed: 8              # 飞行速度（米/秒）
+  mode: grid_search     # 搜索模式: grid_search, spiral_search, sector_search
+  takeoff_behavior: auto_takeoff  # auto_takeoff, manual, from_current
+  
+  # 航点设置
+  waypoint:
+    spacing: 50         # 航点间距（米）
+    overlap: 20         # 航线重叠率（%）
+    turn_type: stop_and_turn  # stop_and_turn, banked_turn
+    loiter_time: 2      # 每个航点悬停时间（秒）
+
+# 传感器配置
+sensors:
+  primary_camera:
+    type: rgb
+    resolution: "4K"
+    focal_length: 24    # mm
+    sensor_width: 13.2  # mm (1英寸传感器)
+    enable_recording: true
+    recording_format: "MP4"
+    
+  thermal_camera:
+    enabled: true
+    resolution: "640x512"
+    sensitivity: high   # high, medium, low
+    palette: white_hot  # white_hot, black_hot, rainbow
+    
+  zoom_camera:
+    enabled: true
+    max_zoom: 20        # 20x光学变焦
+    auto_zoom: true     # 检测到目标时自动变焦
+
+# 检测配置
+detection:
+  model: "yolov8_person_vehicle"
+  confidence_threshold: 0.6
+  nms_threshold: 0.45
+  
+  target_classes:
+    - person
+    - vehicle
+    - boat
+    
+  tracking:
+    enabled: true
+    algorithm: "deepsort"
+    max_lost: 30        # 最大丢失帧数
+    
+  # 检测触发条件
+  triggers:
+    - type: confidence
+      threshold: 0.8
+      action: capture_photo
+    - type: object_enter
+      class: person
+      action: zoom_and_track
+    - type: geofence_breach
+      action: alert_and_rtl
+
+# 地理围栏（禁飞区）
+geofence:
+  keep_in:
+    enabled: true
+    zones:
+      - name: "search_area"
+        vertices: ${search_area.polygon}
+        action: warn  # warn, rtl, land, loiter
+        
+  keep_out:
+    enabled: true
+    zones:
+      - name: "airport"
+        center: { lat: 31.2500, lon: 121.5000, alt: 0 }
+        radius: 1000    # 机场禁飞区1公里
+        action: rtl
+
+# 安全设置
+safety:
+  max_flight_time: 20        # 最大飞行时间（分钟）
+  return_battery_percent: 25 # 返航电量阈值
+  emergency_landing:
+    enabled: true
+    min_altitude: 20
+    
+  failsafe:
+    comm_loss: return_to_launch  # continue, hover, rtl, land
+    gps_loss: land_immediately   # land, descend, manual
+    low_battery: rtl
+
+# 数据记录
+data_recording:
+  enabled: true
+  storage_path: "/data/missions/sar_mission_001"
+  
+  video:
+    enabled: true
+    codec: H264
+    bitrate: 10Mbps
+    
+  photos:
+    enabled: true
+    format: JPEG
+    quality: high
+    on_detection: true   # 检测到目标时拍照
+    interval: 5          # 每5秒拍一张
+    
+  telemetry:
+    enabled: true
+    rate: 10             # Hz
+    
+  detection_log:
+    enabled: true
+    format: json
+    include_images: true
+
+# 通信设置
+communication:
+  ground_station:
+    enabled: true
+    address: "192.168.1.100"
+    port: 14550
+    protocol: mavlink
+    
+  telemetry_stream:
+    enabled: true
+    endpoint: "ws://groundstation:8080/telemetry"
+    rate: 10  # Hz
+    
+  command_interface:
+    enabled: true
+    port: 8080
+    auth_required: true
+
+# 任务行为树
+behavior_tree:
+  root:
+    type: sequence
+    children:
+      - type: takeoff
+        altitude: ${flight.altitude}
+        
+      - type: search_pattern
+        pattern: ${flight.mode}
+        area: ${search_area}
+        on_detection:
+          type: selector
+          children:
+            - type: inspect_target
+              duration: 10
+              zoom: 2x
+            - type: capture_evidence
+              photos: 3
+              video: 30
+            - type: mark_location
+              
+      - type: return_to_launch
+      
+      - type: land
+
+# 告警和通知
+alerts:
+  on_detection:
+    - type: websocket
+      endpoint: ${communication.telemetry_stream.endpoint}
+    - type: log
+      level: info
+    - type: notification
+      sound: true
+      
+  on_low_battery:
+    - type: log
+      level: warning
+    - type: notification
+      sound: true
+      message: "电量不足，准备返航"
+      
+  on_geofence_violation:
+    - type: log
+      level: error
+    - type: emergency_stop
+
+# 调试设置
+debug:
+  log_level: info       # trace, debug, info, warn, error
+  enable_console: true
+  enable_file: true
+  log_file: "mission.log"
+  
+  debug_server:
+    enabled: true
+    port: 8080
+    
+  profiler:
+    enabled: true
+    report_interval: 60  # seconds
