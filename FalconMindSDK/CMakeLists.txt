@@ -17,6 +17,16 @@ endif()
 
 if(FALCONMINDSDK_BUILD_TESTS)
     enable_testing()
+    
+    # Coverage options
+    option(FALCONMINDSDK_ENABLE_COVERAGE "Enable test coverage reporting" OFF)
+    if(FALCONMINDSDK_ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        message(STATUS "Code coverage enabled")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+    endif()
+endif()
+    enable_testing()
 endif()
 
 # 推理后端：默认 OFF，无 GPU/NPU 时可正常编译；开启后需自行安装对应库并实现 load/run
