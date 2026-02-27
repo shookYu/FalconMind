@@ -26,8 +26,6 @@ if(FALCONMINDSDK_BUILD_TESTS)
         add_link_options(--coverage)
     endif()
 endif()
-    enable_testing()
-endif()
 
 # 推理后端：默认 OFF，无 GPU/NPU 时可正常编译；开启后需自行安装对应库并实现 load/run
 option(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND "Build with real ONNXRuntime inference backend (requires ONNXRuntime)" OFF)
@@ -112,7 +110,6 @@ add_library(falconmind_sdk
     src/perception/DummyDetectionNode.cpp
     src/perception/TrackingTransformNode.cpp
     src/perception/PerceptionPluginManager.cpp
-    src/perception/PerceptionPluginManager.cpp
     src/perception/OnnxRuntimeDetectorBackend.cpp
     src/perception/RknnDetectorBackend.cpp
     # src/perception/TensorRtDetectorBackend.cpp  # FIXME: requires CUDA
@@ -140,6 +137,11 @@ add_library(falconmind_sdk
     src/high_level/FlightPipeline.cpp
     src/high_level/MavlinkClient.cpp
     src/flight/GeofenceMonitorNode.cpp
+
+    # Plugin system
+    src/plugin/PluginManager.cpp
+    src/plugin/CapabilityRegistry.cpp
+    src/plugin/BuiltinPlugins.cpp
 )
 
 # 为Python绑定添加-fPIC编译选项（Position Independent Code）
