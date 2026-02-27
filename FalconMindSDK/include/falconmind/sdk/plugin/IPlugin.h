@@ -31,6 +31,17 @@
 
 #include "falconmind/sdk/core/ErrorCode.h"
 #include "falconmind/sdk/core/ConfigManager.h"
+#include "falconmind/sdk/perception/DetectionTypes.h"
+#include "falconmind/sdk/perception/TrackingTypes.h"
+#include "falconmind/sdk/perception/TargetTypes.h"
+#include "falconmind/sdk/sensors/NavigationTypes.h"
+#include "falconmind/sdk/sensors/SensorTypes.h"
+#include "falconmind/sdk/flight/FlightTypes.h"
+#include "falconmind/sdk/flight/GuidanceTypes.h"
+#include "falconmind/sdk/mission/MissionTypes.h"
+#include "falconmind/sdk/mission/SearchTypes.h"
+#include "falconmind/sdk/obstacles/ObstacleTypes.h"
+#include "falconmind/sdk/core/ConfigManager.h"
 #include <string>
 #include <vector>
 #include <memory>

@@ -27,6 +27,9 @@
 #include <unordered_map>
 #include <functional>
 #include <mutex>
+#include <atomic>
+#include <thread>
+#include <filesystem>
 #include <filesystem>
 
 namespace falconmind {
