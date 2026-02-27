@@ -28,6 +28,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <cstring>
 #endif
 
 namespace falconmind::sdk::mission {
@@ -279,7 +280,7 @@ bool EventReporterNode::start() {
     }
     
     // 连接MQTT
-    if (!mqttClient_>connect(mqttHost_, mqttPort_, uavId_)) {
+    if (!mqttClient_->connect(mqttHost_, mqttPort_, uavId_)) {
         std::cerr << "[EventReporterNode] Failed to connect to MQTT broker" << std::endl;
         // 继续运行，使用本地日志
     } else {
@@ -308,11 +309,11 @@ void EventReporterNode::stop() {
     }
     
     // 发送离线通知
-    if (mqttClient_>isConnected()) {
+    if (mqttClient_->isConnected()) {
         publishEvent("connection", "{\"status\":\"disconnected\",\"uav_id\":\"" + uavId_ + "\"}");
     }
     
-    mqttClient_>disconnect();
+    mqttClient_->disconnect();
     
     if (logFile_.is_open()) {
         logFile_.close();
@@ -339,10 +340,11 @@ void EventReporterNode::reportSearchEvent(const SearchEvent& event) {
     
     // MQTT上报
     if (batchMode_) {
-        std::lock_guard<std::mutex> lock(batchMutex_);
-        eventBatch_.push_back(json);
+        {
+            std::lock_guard<std::mutex> lock(batchMutex_);
+            eventBatch_.push_back(json);
+        }
         if (eventBatch_.size() >= static_cast<size_t>(maxBatchSize_)) {
-            lock.unlock();
             flushBatch();
         }
     } else {
@@ -350,9 +352,10 @@ void EventReporterNode::reportSearchEvent(const SearchEvent& event) {
     }
     
     // 通过Bus发布
-    auto msg = std::make_shared<DataMessage>();
-    msg->data.assign(json.begin(), json.end());
-    Bus::post("search/event", msg);
+    BusMessage msg;
+    msg.category = "search/event";
+    msg.text = json;
+    // TODO: Get Bus instance and post message
     
     // 输出到控制台
     std::cout << "[EventReporter] Event #" << eventCount_ << ": " 
@@ -372,9 +375,10 @@ void EventReporterNode::reportSearchProgress(const SearchProgress& progress) {
     publishEvent("search/progress", json);
     
     // 通过Bus发布
-    auto msg = std::make_shared<DataMessage>();
-    msg->data.assign(json.begin(), json.end());
-    Bus::post("search/progress", msg);
+    BusMessage msg;
+    msg.category = "search/progress";
+    msg.text = json;
+    // TODO: Get Bus instance and post message
     
     // 定期输出到控制台
     if (progressCount_ % 10 == 0) {
@@ -489,43 +493,47 @@ void EventReporterNode::writeToLog(const std::string& json) {
 }
 
 void EventReporterNode::publishEvent(const std::string& topic, const std::string& message) {
-    if (mqttClient_&& mqttClient_>isConnected()) {
+    if (mqttClient_ && mqttClient_->isConnected()) {
         std::string fullTopic = "falconmind/" + uavId_ + "/" + topic;
-        if (!mqttClient_>publish(fullTopic, message)) {
+        if (!mqttClient_->publish(fullTopic, message)) {
             std::cerr << "[EventReporterNode] Failed to publish to " << fullTopic << std::endl;
         }
     }
 }
 
 void EventReporterNode::flushBatch() {
-    std::lock_guard<std::mutex> lock(batchMutex_);
+    std::unique_lock<std::mutex> lock(batchMutex_);
     
     if (eventBatch_.empty()) return;
+    
+    // Copy batch and clear under lock
+    auto batchCopy = eventBatch_;
+    eventBatch_.clear();
+    lock.unlock();
     
     // 构建批量消息
     std::stringstream ss;
     ss << "{\"type\":\"batch\",\"events\":[";
-    for (size_t i = 0; i < eventBatch_.size(); ++i) {
+    for (size_t i = 0; i < batchCopy.size(); ++i) {
         if (i > 0) ss << ",";
-        ss << eventBatch_[i];
+        ss << batchCopy[i];
     }
     ss << "],\"count\":" << eventBatch_.size() << "}";
     
     publishEvent("search/batch", ss.str());
-    
-    eventBatch_.clear();
 }
 
 void EventReporterNode::flushThreadFunc() {
     while (!stopThread_) {
         std::this_thread::sleep_for(std::chrono::milliseconds(flushIntervalMs_));
         
+        bool shouldFlush = false;
         {
             std::lock_guard<std::mutex> lock(batchMutex_);
-            if (!eventBatch_.empty()) {
-                lock.unlock();
-                flushBatch();
-            }
+            shouldFlush = !eventBatch_.empty();
+        }
+        if (shouldFlush) {
+            flushBatch();
         }
     }
 }

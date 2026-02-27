@@ -14,9 +14,10 @@
 #include "falconmind/sdk/flight/FlightConnectionService.h"
 
 #include <iostream>
-#include <math>
+#include <cmath>
 #include <chrono>
 #include <string>
+#include <cstring>
 
 // MAVLink协议定义
 namespace mavlink {
@@ -76,14 +77,14 @@ SearchMissionAction::SearchMissionAction(
 void SearchMissionAction::setSearchArea(const SearchArea& area) {
     searchArea_ = area;
     if (pathPlanner_) {
-        pathPlanner->setSearchArea(area);
+        pathPlanner_->setSearchArea(area);
     }
 }
 
 void SearchMissionAction::setSearchParams(const SearchParams& params) {
     searchParams_ = params;
     if (pathPlanner_) {
-        pathPlanner->setSearchParams(params);
+        pathPlanner_->setSearchParams(params);
     }
 }
 
@@ -107,7 +108,7 @@ bool SearchMissionAction::isWaypointReached(const GeoPoint& waypoint,
     return distance < tolerance && altDiff < tolerance;
 }
 
-bool SearchMissionAction::uploadMissionToPX4(const std::vector<Waypoint>& waypoints) {
+bool SearchMissionAction::uploadMissionToPX4(const std::vector<GeoPoint>& waypoints) {
     if (waypoints.empty()) {
         std::cerr << "[SearchMissionAction] No waypoints to upload" << std::endl;
         return false;
@@ -137,7 +138,7 @@ bool SearchMissionAction::uploadMissionToPX4(const std::vector<Waypoint>& waypoi
         progress.currentPosition = {waypoints[i].lat, waypoints[i].lon, waypoints[i].alt};
         
         if (eventReporter_) {
-            eventReporter_>reportSearchProgress(progress);
+            eventReporter_->reportSearchProgress(progress);
         }
     }
     
@@ -189,7 +190,7 @@ bool SearchMissionAction::sendMissionCount(int count) {
     return true;
 }
 
-bool SearchMissionAction::waitAndSendWaypoint(int seq, const Waypoint& wp) {
+bool SearchMissionAction::waitAndSendWaypoint(int seq, const GeoPoint& wp) {
     // 简化实现：直接发送航点
     // 实际应等待MISSION_REQUEST，然后发送对应的航点
     
@@ -217,7 +218,7 @@ bool SearchMissionAction::waitAndSendWaypoint(int seq, const Waypoint& wp) {
     buffer[len++] = 1;     // autocontinue
     
     // param1-4 (float32)
-    float holdTime = searchParams_.hoverTime;
+    float holdTime = searchParams_.loiterTime;
     memcpy(&buffer[len], &holdTime, 4); len += 4;  // hold time
     float acceptRadius = 5.0f;
     memcpy(&buffer[len], &acceptRadius, 4); len += 4;  // accept radius
@@ -276,7 +277,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
     FlightState currentState = flightSvc_.getLastState();
     
     // 获取航点列表
-    const auto& waypoints = pathPlanner_>getWaypoints();
+    const auto& waypoints = pathPlanner_->getWaypoints();
     if (waypoints.empty()) {
         std::cerr << "[SearchMissionAction] No waypoints available" << std::endl;
         return NodeStatus::Failure;
@@ -308,7 +309,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
         event.timestampNs = timestampNs;
         
         if (eventReporter_) {
-            eventReporter_>reportSearchEvent(event);
+            eventReporter_->reportSearchEvent(event);
         }
         
         std::cout << "[SearchMissionAction] ✓ Waypoint " << currentWaypointIndex_ 
@@ -327,7 +328,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
         progress.currentPosition = currentPos;
         
         if (eventReporter_) {
-            eventReporter_>reportSearchProgress(progress);
+            eventReporter_->reportSearchProgress(progress);
         }
         
         // 检查是否完成
@@ -346,7 +347,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
             
             if (waypointRetryCount_ > maxWaypointRetries_) {
                 std::cerr << "[SearchMissionAction] Waypoint " << currentWaypointIndex_ 
-                          << " timeout after " <> maxWaypointRetries_ << " retries" << std::endl;
+                          << " timeout after " << maxWaypointRetries_ << " retries" << std::endl;
                 
                 SearchEvent event;
                 event.type = SearchEventType::WAYPOINT_TIMEOUT;
@@ -355,7 +356,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
                 event.timestampNs = currentTimeNs;
                 
                 if (eventReporter_) {
-                    eventReporter_>reportSearchEvent(event);
+                    eventReporter_->reportSearchEvent(event);
                 }
                 
                 // 跳过这个航点，继续下一个
@@ -365,7 +366,7 @@ NodeStatus SearchMissionAction::executeWaypointMission() {
             } else {
                 // 重试：重新发送当前航点
                 std::cout << "[SearchMissionAction] Retrying waypoint " << currentWaypointIndex_ 
-                          << " (attempt " << waypointRetryCount_ << "/" <> maxWaypointRetries_ << ")" << std::endl;
+                          << " (attempt " << waypointRetryCount_ << "/" << maxWaypointRetries_ << ")" << std::endl;
                 lastWaypointTime_ = currentTimeNs;
             }
         }
@@ -379,9 +380,26 @@ NodeStatus SearchMissionAction::tick() {
         case MissionState::IDLE: {
             // 配置路径规划器
             if (pathPlanner_) {
-                pathPlanner_>setSearchArea(searchArea_);
-                pathPlanner_>setSearchParams(searchParams_);
-                pathPlanner_>generateWaypoints();
+                pathPlanner_->setSearchArea(searchArea_);
+                pathPlanner_->setSearchParams(searchParams_);
+                // Generate waypoints based on search pattern
+                switch (searchParams_.pattern) {
+                    case SearchPattern::LAWN_MOWER:
+                        pathPlanner_->generateLawnMowerPath();
+                        break;
+                    case SearchPattern::SPIRAL:
+                        pathPlanner_->generateSpiralPath();
+                        break;
+                    case SearchPattern::ZIGZAG:
+                        pathPlanner_->generateZigzagPath();
+                        break;
+                    case SearchPattern::SECTOR:
+                        pathPlanner_->generateSectorPath();
+                        break;
+                    default:
+                        pathPlanner_->generateLawnMowerPath();
+                        break;
+                }
             }
             
             missionStartTime_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -435,7 +453,7 @@ NodeStatus SearchMissionAction::tick() {
         
         case MissionState::UPLOADING_MISSION: {
             if (!waypointsUploaded_) {
-                const auto& waypoints = pathPlanner_>getWaypoints();
+                const auto& waypoints = pathPlanner_->getWaypoints();
                 if (waypoints.empty()) {
                     std::cerr << "[SearchMissionAction] No waypoints generated" << std::endl;
                     return NodeStatus::Failure;
@@ -471,7 +489,7 @@ NodeStatus SearchMissionAction::tick() {
                 event.timestampNs = timestampNs;
                 
                 if (eventReporter_) {
-                    eventReporter_>reportSearchEvent(event);
+                    eventReporter_->reportSearchEvent(event);
                 }
                 
                 std::cout << "[SearchMissionAction] Search mission completed!" << std::endl;
@@ -516,7 +534,7 @@ NodeStatus SearchMissionAction::tick() {
             auto duration = now.time_since_epoch();
             uint64_t elapsedMs = (std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count() - missionStartTime_) / 1000000;
             
-            std::cout << "[SearchMissionAction] Mission complete in " <> elapsedMs / 1000.0 << "s" << std::endl;
+            std::cout << "[SearchMissionAction] Mission complete in " << elapsedMs / 1000.0 << "s" << std::endl;
             return NodeStatus::Success;
         }
     }

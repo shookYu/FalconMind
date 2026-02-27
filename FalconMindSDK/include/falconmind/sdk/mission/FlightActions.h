@@ -15,6 +15,41 @@ using falconmind::sdk::flight::FlightCommand;
 using falconmind::sdk::flight::FlightCommandType;
 using falconmind::sdk::flight::FlightConnectionService;
 using falconmind::sdk::flight::FlightState;
+
+class ArmAction : public BehaviorNode {
+public:
+    explicit ArmAction(FlightConnectionService& svc) : svc_(svc) {}
+
+    NodeStatus tick() override {
+        if (done_) return NodeStatus::Success;
+        FlightCommand cmd{};
+        cmd.type = FlightCommandType::Arm;
+        svc_.sendCommand(cmd);
+        done_ = true;
+        return NodeStatus::Success;
+    }
+
+private:
+    FlightConnectionService& svc_;
+    bool done_{false};
+};
+
+// ============================================================================
+// 新增飞行动作
+// ============================================================================
+
+/**
+ * @brief 导航到指定位置
+ * 
+ * 发送MAVLink NAV_WAYPOINT命令，控制UAV飞到指定经纬度和高度
+ */
+class NavigateToAction : public BehaviorNode {
+public:
+
+using falconmind::sdk::flight::FlightCommand;
+using falconmind::sdk::flight::FlightCommandType;
+using falconmind::sdk::flight::FlightConnectionService;
+using falconmind::sdk::flight::FlightState;
 #pragma once
 
 #include "falconmind/sdk/mission/BehaviorTree.h"

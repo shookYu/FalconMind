@@ -38,7 +38,6 @@ public:
 
 private:
     // 任务状态
-    // 任务状态
     enum class MissionState {
         IDLE,
         ARMING,
@@ -59,34 +58,19 @@ private:
     bool isWaypointReached(const GeoPoint& waypoint, const GeoPoint& currentPos, double tolerance = 5.0);
     
     // MAVLink航点协议
-    bool uploadMissionToPX4(const std::vector<Waypoint>& waypoints);
+    bool uploadMissionToPX4(const std::vector<GeoPoint>& waypoints);
     bool sendMissionCount(int count);
-    bool waitAndSendWaypoint(int seq, const Waypoint& wp);
+    bool waitAndSendWaypoint(int seq, const GeoPoint& wp);
     bool waitForMissionAck();
     bool startMissionExecution();
     
     // 重置任务
     void reset();
-        IDLE,
-        ARMING,
-        TAKING_OFF,
-        FLYING_TO_AREA,
-        SEARCHING,
-        RETURNING,
-        COMPLETE
-    };
-
-    // 执行航点任务
-    NodeStatus executeWaypointMission();
-    
-    // 检查是否到达航点
-    bool isWaypointReached(const GeoPoint& waypoint, const GeoPoint& currentPos, double tolerance = 5.0);
 
     flight::FlightConnectionService& flightSvc_;
     std::shared_ptr<SearchPathPlannerNode> pathPlanner_;
     std::shared_ptr<EventReporterNode> eventReporter_;
     
-    SearchArea searchArea_;
     SearchArea searchArea_;
     SearchParams searchParams_;
     MissionState state_{MissionState::IDLE};
@@ -100,10 +84,6 @@ private:
     uint64_t lastWaypointTime_{0};
     int waypointRetryCount_{0};
     int maxWaypointRetries_{3};
-    MissionState state_{MissionState::IDLE};
-    int currentWaypointIndex_{0};
-    bool armingDone_{false};
-    bool takeoffDone_{false};
 };
 
 } // namespace falconmind::sdk::mission

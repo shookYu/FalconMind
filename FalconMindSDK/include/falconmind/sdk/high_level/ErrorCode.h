@@ -67,19 +67,24 @@ enum class ErrorCode : int {
     NodeNotFound = 4003,
     PadNotConnected = 4004,
     InvalidStateTransition = 4005,
-    PipelineConfigurationError = 4006,
-    DataTypeMismatch = 4007,
-    BufferOverflow = 4008,
+    InvalidOperation = 4006,
+    PipelineConfigurationError = 4007,
+    DataTypeMismatch = 4008,
+    BufferOverflow = 4009,
     
     // Communication errors (5000-5999)
     ConnectionFailed = 5001,
     ConnectionLost = 5002,
-    Timeout = 5003,
-    ProtocolError = 5004,
+    AlreadyConnected = 5003,
+    NotConnected = 5004,
+    Timeout = 5005,
+    ProtocolError = 5006,
     MavlinkInitFailed = 5101,
     MavlinkSendFailed = 5102,
     MavlinkRecvFailed = 5103,
     MavlinkTimeout = 5104,
+    
+    // System errors (6000-6999)
     
     // System errors (6000-6999)
     OutOfMemory = 6001,
@@ -137,12 +142,14 @@ inline const char* errorCodeToString(ErrorCode code) {
         
         case ErrorCode::ConnectionFailed: return "Connection failed";
         case ErrorCode::ConnectionLost: return "Connection lost";
+        case ErrorCode::AlreadyConnected: return "Already connected";
+        case ErrorCode::NotConnected: return "Not connected";
         case ErrorCode::Timeout: return "Operation timeout";
         case ErrorCode::ProtocolError: return "Protocol error";
         case ErrorCode::MavlinkInitFailed: return "MAVLink initialization failed";
         case ErrorCode::MavlinkSendFailed: return "MAVLink send failed";
         case ErrorCode::MavlinkRecvFailed: return "MAVLink receive failed";
-        case ErrorCode::MavlinkTimeout: return "MAVLink timeout";
+    case ErrorCode::MavlinkTimeout: return "MAVLink timeout";
         
         case ErrorCode::OutOfMemory: return "Out of memory";
         case ErrorCode::PermissionDenied: return "Permission denied";
