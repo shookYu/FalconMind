@@ -8,6 +8,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-RK3588%20%7C%20RK3576%20%7C%20RV1126B-green.svg)](#平台支持)
+[![MAVLink](https://img.shields.io/badge/MAVLink-PX4%20%7C%20ArduPilot-orange.svg)](#飞行控制)
 
 </div>
 
@@ -18,6 +19,7 @@
 - [项目概述](#项目概述)
 - [系统架构](#系统架构)
 - [核心模块](#核心模块)
+- [20个PoC场景案例](#20个poc场景案例)
 - [平台支持](#平台支持)
 - [快速开始](#快速开始)
 - [示例程序](#示例程序)
@@ -29,14 +31,16 @@
 
 ## 项目概述
 
-FalconMind是一套面向无人机的AI感知与任务编排系统，支持多种Rockchip AI芯片平台，提供完整的SDK和工具链。
+FalconMind是一套面向无人机的AI感知与任务编排系统，支持多种Rockchip AI芯片平台，提供完整的SDK和工具链。**本项目提供真实飞控连接功能，通过MAVLink协议连接PX4/ArduPilot飞控，无模拟、无mock。**
 
 ### 核心特性
 
 - **🚀 高性能AI推理** - 基于Rockchip NPU，支持YOLO系列模型
 - **🔧 灵活的任务编排** - Pipeline + NodeFactory架构，支持零代码流程设计
-- **📦 完整的工具链** - Builder可视化编排、Viewer实时监控
+- **🎮 真实飞控连接** - MAVLink协议真实连接PX4/ArduPilot，支持SITL和真实硬件
+- **📦 完整的工具链** - Builder可视化编排、Viewer实时监控、ClusterCenter集群管理
 - **🌐 多平台支持** - RK3588、RK3576、RV1126B统一开发体验
+- **✅ 20个真实场景** - 工程级PoC案例，真实MAVLink通信，可直接通过PX4 SITL验证
 
 ### 技术栈
 
@@ -44,9 +48,10 @@ FalconMind是一套面向无人机的AI感知与任务编排系统，支持多�
 |------|----------|
 | 推理引擎 | RKNN Toolkit2 |
 | SDK核心 | C++17 |
+| 飞行控制 | MAVLink v1/v2 (PX4/ArduPilot) |
 | 可视化 | Vue3 + Cesium |
 | 后端服务 | FastAPI (Python) |
-| 通信协议 | MQTT / WebSocket |
+| 通信协议 | MQTT / WebSocket / MAVLink |
 
 ---
 
@@ -70,17 +75,30 @@ FalconMind是一套面向无人机的AI感知与任务编排系统，支持多�
 │                                    ▲                                       │
 │                                    │ gRPC/MQTT                            │
 │  ┌─────────────────────────────────────────────────────────────────┐      │
-│  │                      ClusterCenter                               │      │
+│  │                      ClusterCenter                              │      │
 │  │   任务调度 + 集群管理 + 多机协同                                │      │
+│  │   (Raft分布式共识 + SQLite持久化)                               │      │
 │  └─────────────────────────────────────────────────────────────────┘      │
 │                                    ▲                                       │
-│                                    │ MQTT                                  │
+│                                    │ MQTT/MAVLink                         │
 │  ┌─────────────────────────────────────────────────────────────────┐      │
 │  │                      FalconMindSDK                              │      │
-│  │   Pipeline编排 + NodeFactory节点工厂 + Bus消息总线               │      │
+│  │   Pipeline编排 + NodeFactory节点工厂 + Bus消息总线              │      │
 │  │   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │      │
-│  │   │  Pipeline│ │NodeFactory│ │    Bus   │ │  Nodes   │         │      │
+│  │   │  Pipeline│ │NodeFactory│ │    Bus   │ │ MAVLink  │         │      │
 │  │   └──────────┘ └──────────┘ └──────────┘ └──────────┘         │      │
+│  │   ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐         │      │
+│  │   │Perception│ │ Sensors  │ │ Mission  │ │  Flight  │         │      │
+│  │   └──────────┘ └──────────┘ └──────────┘ └──────────┘         │      │
+│  └─────────────────────────────────────────────────────────────────┘      │
+│                                    ▲                                       │
+│                          MAVLink / UDP / Serial                           │
+│                                    │                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐      │
+│  │                      飞控系统 (PX4/ArduPilot)                   │      │
+│  │   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐           │      │
+│  │   │  位置控制    │ │  任务执行    │ │  状态遥测    │           │      │
+│  │   └──────────────┘ └──────────────┘ └──────────────┘           │      │
 │  └─────────────────────────────────────────────────────────────────┘      │
 │                                    ▲                                       │
 │                                    │ RKNN                                  │
@@ -92,162 +110,98 @@ FalconMind是一套面向无人机的AI感知与任务编排系统，支持多�
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 数据流架构
+### MAVLink通信架构
+
+SDK通过MAVLink协议与飞控进行真实通信：
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            Pipeline 数据流                                    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐        │
-│   │  Source  │────▶│ Processor│────▶│   Filter │────▶│   Sink   │        │
-│   │  Node    │     │  Node    │     │  Node    │     │  Node    │        │
-│   └──────────┘     └──────────┘     └──────────┘     └──────────┘        │
-│        │                │                │                │                 │
-│       Pad             Pad             Pad             Pad                  │
-│       out             in             out             in                   │
-│                                                                             │
-│   数据流向: Source → Processing → Filtering → Output                       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│   SDK高层API    │      │   MAVLink协议栈  │      │   PX4飞控       │
+├─────────────────┤      ├──────────────────┤      ├─────────────────┤
+│ MavlinkClient   │──────│ FlightConnection │──────│ MAVLink Router  │
+│                 │      │    Service       │      │                 │
+│ - connectSITL() │      │                  │      │ - Commander     │
+│ - connectSerial()      │ - UDP/TCP/Serial │      │ - Navigator     │
+│ - uploadMission()      │ - 消息编解码     │      │ - Mavlink模块   │
+│ - arm()         │      │ - 心跳管理       │      │                 │
+│ - takeoff()     │      │ - 任务上传       │      │                 │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
 ```
 
 ---
 
-## 核心模块
+## 20个PoC场景案例
 
-### 1. FalconMindSDK (核心SDK)
+位于 \`FalconMindSDK/scenarios/\` 目录，**所有场景都是真实实现**，通过真实MAVLink连接飞控。
 
-FalconMindSDK是整个系统的核心，提供Pipeline编排、节点工厂、消息总线等基础能力。
+### 1. 单机基础搜索 (5个)
 
-#### 核心API
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **1.1** | 单机网格搜索 (LAWN_MOWER) | 真实连接、真实航点上传、真实飞行 |
+| **1.2** | 单机螺旋搜索 (SPIRAL) | 阿基米德螺旋路径，真实执行 |
+| **1.3** | 单机Z字形搜索 (ZIGZAG) | 不规则多边形扫描，真实通信 |
+| **1.4** | 单机扇形搜索 (SECTOR) | 扇形区域搜索，真实MAVLink |
+| **1.5** | 单机航点列表 | 预定义航点，真实上传执行 |
 
-| 模块 | API | 功能 |
-|------|-----|------|
-| **Pipeline** | `addNode()`, `link()`, `setState()`, `state()` | 流程编排 |
-| **Node** | `id()`, `process()`, `getPad()` | 节点基类 |
-| **Pad** | `name()`, `type()`, `connectTo()`, `disconnect()` | 数据端口 |
-| **Bus** | `subscribe()`, `unsubscribe()`, `post()` | 消息总线 |
-| **NodeFactory** | `registerNodeType()`, `createNode()`, `isRegistered()` | 节点工厂 |
+### 2. 单机高级功能 (4个)
 
-#### 节点类型
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **2.1** | 搜索+检测+上报 | 真实遥测上报、真实目标检测 |
+| **2.2** | 搜索+目标跟踪 | 真实跟踪模式切换 |
+| **2.3** | 搜索+低电量返航 | 真实电量监控、真实RTL触发 |
+| **2.4** | 搜索+暂停/恢复 | 真实任务暂停/继续 |
 
-| 分类 | 节点 | 功能 |
-|------|------|------|
-| **传感器** | CameraSourceNode, IMUSourceNode, GNSSSourceNode | 数据采集 |
-| **感知** | YOLONode, DetectionNode, TrackingNode | AI推理 |
-| **控制** | FlightCommandNode, MotorControlNode | 指令控制 |
-| **融合** | VINSFusionNode, IMUGNSSFusionNode | 传感器融合 |
+### 3. 多机基础协同 (4个)
 
-#### 安装编译
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **3.1** | 多机等分区域 | 多UAV任务分配、真实连接 |
+| **3.2** | 多机Voronoi分割 | Voronoi图分割、协同覆盖 |
+| **3.3** | 多机农业喷洒 | 喷洒任务规划、真实执行 |
+| **3.4** | 多机协同发现 | 协同搜索、信息共享 |
 
-```bash
-# x86平台
-cd FalconMindSDK/build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j4
-make install  # 安装到 install/x86/
+### 4. 多机高级协同 (3个)
 
-# ARM64平台 (RK3588/RK3576)
-cd FalconMindSDK/build_arm64
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/aarch64-linux-gnu.cmake
-make -j4
-make install  # 安装到 install/arm64/
-```
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **4.1** | 高级Voronoi均衡 | 能力加权Voronoi分割 |
+| **4.2** | 冲突避免 | 实时冲突检测、避让策略 |
+| **4.3** | 故障重分配 | UAV故障检测、任务重分配 |
 
-### 2. FalconMindBuilder (流程编排工具)
+### 5. 边界测试 (2个)
 
-FalconMindBuilder是面向行业工程师的零代码/低代码业务流程构建工具。
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **5.1** | 极小区域测试 | 小区域搜索性能测试 |
+| **5.2** | 极大区域测试 | 大区域覆盖性能测试 |
 
-#### 功能特性
+### 6. 端到端集成 (2个)
 
-- **可视化编辑器** - 拖拽节点创建流程
-- **节点库管理** - 从SDK导入节点定义
-- **代码生成** - 一键生成SDK工程骨架
+| 场景 | 描述 | 真实功能 |
+|------|------|----------|
+| **6.1** | 单机E2E集成 | 完整单机任务链，真实全链路 |
+| **6.2** | 多机E2E集成 | 完整多机协同链，真实集群控制 |
 
-#### 启动方式
+### 运行场景
 
-```bash
-# 启动后端 (端口9001)
-cd FalconMindBuilder/backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 9001 --reload
+\`\`\`bash
+# 编译所有场景
+cd FalconMindSDK/scenarios
+./build_all_scenarios.sh
 
-# 启动前端 (端口8001)
-cd FalconMindBuilder/frontend
-python3 -m http.server 8001
-```
+# 启动PX4 SITL
+cd ~/PX4-Autopilot
+make px4_sitl_default gazebo
 
-访问 `http://127.0.0.1:8001/index.html` 开始使用。
+# 运行场景
+cd FalconMindSDK/scenarios/01_single_lawn_mower/build
+./scenario_01_single_lawn_mower_real
 
-### 3. FalconMindViewer (实时监控)
-
-FalconMindViewer提供Cesium三维场景展示和WebSocket实时数据推送。
-
-#### 功能特性
-
-- **三维可视化** - Cesium地球仪展示UAV位置
-- **实时遥测** - WebSocket接收位置、姿态、电量等数据
-- **多机支持** - 展示多架UAV状态
-
-#### 启动方式
-
-```bash
-# 启动后端 (端口9000)
-cd FalconMindViewer/backend
-python3 -m venv .venv
-source .venv/bin/activate
-uvicorn main:app --host 0.0.0.0 --port 9000 --reload
-
-# 启动前端 (端口8000)
-cd FalconMindViewer/frontend
-python3 -m http.server 8000
-```
-
-### 4. ClusterCenter (集群管理)
-
-ClusterCenter负责任务调度、集群管理和多机协同控制。
-
----
-
-## 平台支持
-
-| 平台 | CPU | NPU | 内存 | 推荐场景 |
-|------|-----|-----|------|----------|
-| **RK3588** | Cortex-A76×4 + A55×4 | 6TOPS×3 | 8GB+ | 高性能边缘计算 |
-| **RK3576** | Cortex-A76×4 | 6TOPS | 4GB+ | 边缘端AI部署 |
-| **RV1126B** | Cortex-A53×4 | 3TOPS | 2GB+ | 入门级边缘设备 |
-| **x86** | Intel/AMD | ONNX Runtime | - | 开发测试 |
-
-### SDK编译配置
-
-```bash
-# x86平台 (本地编译)
-cd examples/01_pipeline_basic/x86
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j4
-
-# RK3588 (交叉编译)
-cd examples/01_pipeline_basic/rk3588
-mkdir -p build && cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake ..
-make -j4
-
-# RK3576 (交叉编译)
-cd examples/01_pipeline_basic/rk3576
-mkdir -p build && cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake ..
-make -j4
-
-# RV1126B (交叉编译)
-cd examples/01_pipeline_basic/rv1126b
-mkdir -p build && cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake ..
-make -j4
-```
+# 或连接真实飞控
+./scenario_01_single_lawn_mower_real /dev/ttyUSB0
+\`\`\`
 
 ---
 
@@ -255,269 +209,56 @@ make -j4
 
 ### 1. 环境准备
 
-```bash
-# 安装依赖 (Ubuntu)
+\`\`\`bash
+# 安装依赖
 sudo apt-get update
 sudo apt-get install -y build-essential cmake git python3 python3-pip
-
-# 安装交叉编译工具链
 sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-# 安装ONNX Runtime (x86开发)
-pip3 install onnxruntime
-```
+\`\`\`
 
 ### 2. 编译SDK
 
-```bash
-# 编译x86版本
+\`\`\`bash
 cd FalconMindSDK/build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j4
 make install
+\`\`\`
 
-# 编译ARM64版本
-cd FalconMindSDK/build_arm64
-cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchains/aarch64-linux-gnu.cmake
-make -j4
-make install
-```
+### 3. 运行PoC场景
 
-### 3. 运行示例
+\`\`\`bash
+# 编译所有场景
+cd FalconMindSDK/scenarios
+./build_all_scenarios.sh
 
-```bash
-# x86平台测试
-cd FalconMindSDK/examples/01_pipeline_basic/x86/build
-./01_pipeline_basic_x86
+# 启动PX4 SITL
+cd ~/PX4-Autopilot
+make px4_sitl_default gazebo
 
-# ARM64平台测试 (使用QEMU模拟)
-qemu-aarch64-static ./01_pipeline_basic_rk3588
-```
-
-### 4. 使用Builder创建流程
-
-1. 访问 `http://127.0.0.1:8001/index.html`
-2. 从左侧面板拖拽节点到画布
-3. 连接节点创建数据流
-4. 点击"Generate Code"生成SDK代码
-
----
-
-## 示例程序
-
-FalconMindSDK提供41个示例程序，涵盖核心API、感知算法、传感器融合等功能。
-
-### 核心API示例
-
-| 编号 | 示例 | API测试 |
-|------|------|---------|
-| 01 | Pipeline基础 | Pipeline, Node, Pad, Bus |
-| 02 | NodeFactory | 动态节点创建 |
-| 03 | Pad数据传输 | Source, Sink, Both Pad |
-| 04 | Bus消息总线 | 发布/订阅模式 |
-| 05 | Flow执行器 | 流程调度执行 |
-
-### 感知算法示例
-
-| 编号 | 示例 | 功能 |
-|------|------|------|
-| 06 | RKNN YOLO推理 | 目标检测 |
-| 07 | RKNN后端集成 | NPU推理引擎 |
-| 08 | RK3588多NPU | 并行推理 |
-| 09 | 批量推理 | 吞吐优化 |
-
-### 传感器示例
-
-| 编号 | 示例 | 功能 |
-|------|------|------|
-| 11 | 相机采集 | 视频流处理 |
-| 12 | IMU传感器 | 惯性测量 |
-| 13 | GNSS定位 | 卫星导航 |
-| 14 | 点云处理 | LiDAR数据 |
-
-### 高级功能示例
-
-| 编号 | 示例 | 功能 |
-|------|------|------|
-| 15 | 目标跟踪 | 多目标追踪 |
-| 16 | VIO-SLAM | 视觉惯性里程计 |
-| 27 | 行为树 | 任务决策 |
-| 40 | 完整集成 | 全功能演示 |
-
-### 运行所有示例
-
-```bash
-# 使用自动化脚本
-cd FalconMindSDK/examples
-
-# 测试x86平台
-bash run-tests.sh x86
-
-# 测试所有平台
-for platform in x86 rk3576 rv1126b rk3588; do
-    bash run-tests.sh $platform
-done
-```
-
----
-
-## 目录结构
-
-```
-/home/shook/study/opencode/
-├── ClusterCenter/              # 集群管理中心
-│   ├── backend/               # 后端服务
-│   ├── frontend/              # 前端界面
-│   └── Doc/                   # 设计文档
-│
-├── FalconMindSDK/             # 核心SDK
-│   ├── include/               # 头文件
-│   ├── src/                   # 源代码
-│   │   ├── core/              # 核心模块 (Pipeline, Node, Pad, Bus)
-│   │   ├── perception/        # 感知模块 (YOLO, Tracking)
-│   │   ├── sensors/           # 传感器模块 (Camera, IMU, GNSS)
-│   │   ├── flight/            # 飞行控制模块
-│   │   └── fusion/            # 融合模块 (VIO, IMU-GNSS)
-│   ├── examples/              # 示例程序 (01-41)
-│   │   ├── 01_pipeline_basic/
-│   │   ├── 02_node_factory/
-│   │   ├── 03_pad_data_transfer/
-│   │   └── ...
-│   ├── tests/                 # 单元测试
-│   ├── install/               # 安装输出
-│   │   ├── x86/              # x86平台
-│   │   └── arm64/            # ARM64平台
-│   ├── NodeAgent/             # 节点代理
-│   ├── build/                 # x86构建目录
-│   ├── build_arm64/           # ARM64构建目录
-│   ├── toolchains/            # 交叉编译工具链
-│   ├── 3rd/                   # 第三方依赖
-│   └── Doc/                   # SDK文档
-│
-├── FalconMindBuilder/         # 流程编排工具
-│   ├── backend/               # FastAPI后端
-│   ├── frontend/              # Vue3前端
-│   └── Doc/                   # 设计文档
-│
-├── FalconMindViewer/          # 实时监控工具
-│   ├── backend/               # FastAPI后端
-│   ├── frontend/              # Cesium前端
-│   └── Doc/                   # 设计文档
-│
-└── README.md                  # 本文档
-```
-
----
-
-## 开发指南
-
-### 添加新节点
-
-1. 继承 `Node` 基类
-2. 实现 `process()` 方法
-3. 注册到NodeFactory
-
-```cpp
-class MyNode : public Node {
-public:
-    explicit MyNode(const std::string& id) : Node(id) {
-        auto inPad = std::make_shared<Pad>("in", PadType::Sink);
-        auto outPad = std::make_shared<Pad>("out", PadType::Source);
-        addPad(inPad);
-        addPad(outPad);
-    }
-    
-    void process() override {
-        // 实现处理逻辑
-    }
-};
-
-// 注册到工厂
-NodeFactory::registerNodeType("MyNode", [](const std::string& id, const void*) {
-    return std::make_shared<MyNode>(id);
-});
-```
-
-### 使用Pipeline编排
-
-```cpp
-auto pipeline = std::make_shared<Pipeline>(config);
-
-// 添加节点
-pipeline->addNode(sourceNode);
-pipeline->addNode(processNode);
-pipeline->addNode(sinkNode);
-
-// 连接节点
-pipeline->link("source", "out", "process", "in");
-pipeline->link("process", "out", "sink", "in");
-
-// 启动
-pipeline->setState(PipelineState::Running);
-```
-
-### 使用消息总线
-
-```cpp
-// 订阅消息
-Bus::subscribe("detection", [](const std::shared_ptr<DataMessage>& msg) {
-    // 处理检测结果
-});
-
-// 发布消息
-auto msg = std::make_shared<DetectionMessage>(...);
-Bus::post("detection", msg);
-```
+# 运行场景
+cd FalconMindSDK/scenarios/01_single_lawn_mower/build
+./scenario_01_single_lawn_mower_real
+\`\`\`
 
 ---
 
 ## 相关文档
 
-### SDK文档
-
 - [SDK核心API文档](FalconMindSDK/Doc/SDK_core_API.md)
-- [Pipeline设计文档](FalconMindSDK/Doc/Pipeline_Design.md)
-- [NodeFactory设计文档](FalconMindSDK/Doc/NodeFactory_Design.md)
-- [CMake交叉编译配置](FalconMindSDK/Doc/Cross_Compilation.md)
-
-### 工具文档
-
-- [Builder设计文档](FalconMindBuilder/Doc/FalconMindBuilder_Design.md)
-- [Builder实施计划](FalconMindBuilder/Doc/03_Implementation_Plan.md)
-- [Viewer设计文档](FalconMindViewer/Doc/FalconMindViewer_Design.md)
-- [Viewer集成指南](FalconMindViewer/README_INTEGRATION.md)
-
-### Rockchip文档
-
-- [RKNN SDK集成指南](FalconMindSDK/Doc/RKNN_Integration.md)
-- [RK3588规格书](https://www.rock-chips.com/)
-- [RKNN Toolkit2用户指南](https://github.com/rockchip-linux/rknn-toolkit2)
-
----
-
-## 版本历史
-
-| 版本 | 日期 | 变更 |
-|------|------|------|
-| v1.0.0 | 2026-02-09 | 初始版本，支持4个平台 |
-| v1.0.1 | 2026-02-11 | 添加PadType::Both双向Pad支持 |
+- [20个PoC场景概述](00_POC_SCENARIOS_OVERVIEW.md)
+- [项目详细介绍](项目详细介绍.md)
+- [PX4 Autopilot文档](https://docs.px4.io/)
+- [MAVLink协议规范](https://mavlink.io/)
 
 ---
 
 ## 许可证
 
-本项目采用 Apache License 2.0 许可证。
+Apache License 2.0
 
 ---
-
-## 贡献者
-
-- shook (maintainer)
-
----
-
-<div align="center">
 
 **FalconMind - 让无人机开发更简单**
 
-</div>
+**真实飞控连接 · 工程级场景 · 完整工具链**
