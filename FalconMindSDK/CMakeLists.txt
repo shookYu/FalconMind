@@ -431,3 +431,18 @@ if(FALCONMINDSDK_BUILD_NODEAGENT)
         message(WARNING "NodeAgent目录不存在: ${CMAKE_CURRENT_SOURCE_DIR}/NodeAgent")
     endif()
 endif()
+
+# =============================================================================
+# SDK Interface Adapter (用于 NodeAgent 解耦)
+# =============================================================================
+# 编译 SDK 接口适配器为共享库，供 NodeAgent 运行时动态加载
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/adapter/CMakeLists.txt)
+
+# 打印配置摘要
+message(STATUS "")
+message(STATUS "FalconMindSDK 配置摘要:")
+message(STATUS "  版本: ${PROJECT_VERSION}")
+message(STATUS "  构建类型: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  安装前缀: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  接口适配器: ${FALCONMINDSDK_BUILD_INTERFACE_ADAPTER}")
+message(STATUS "")
