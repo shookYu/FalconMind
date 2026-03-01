@@ -1,6 +1,26 @@
 from typing import List, Dict, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
+import os
+
+from app.models.cluster_mission import ClusterMission, CoordinationEvent
+from app.services.mission_assigner import MissionAssigner, AdvancedMissionAssigner, UavInfo
+from app.utils.algorithms.area_splitter import split_area
+from app.core.mqtt_publisher import MissionMqttPublisher, get_mqtt_publisher
+
+
+class MultiUavService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.assigner = AdvancedMissionAssigner()
+        # 初始化 MQTT Publisher
+        try:
+            self.mqtt_publisher = get_mqtt_publisher()
+        except Exception as e:
+            print(f"[MultiUavService] Warning: Failed to initialize MQTT publisher: {e}")
+            self.mqtt_publisher = None
+from datetime import datetime
+from sqlalchemy.orm import Session
 
 from app.models.cluster_mission import ClusterMission, CoordinationEvent
 from app.services.mission_assigner import MissionAssigner, AdvancedMissionAssigner, UavInfo
@@ -73,6 +93,39 @@ class MultiUavService:
         return [self._to_dict(m) for m in missions]
     
     def update_mission_status(self, mission_id: str, status: str) -> bool:
+        mission = self.db.query(ClusterMission).filter(ClusterMission.id == mission_id).first()
+        if not mission:
+            return False
+        
+        mission.status = status
+        
+        if status == "RUNNING" and not mission.started_at:
+            mission.started_at = datetime.utcnow()
+            
+            # 关键：当任务状态变为 RUNNING 时，通过 MQTT 下发到 UAV
+            if self.mqtt_publisher and mission.sub_missions:
+                print(f"[MultiUavService] Dispatching mission {mission_id} to UAVs via MQTT")
+                dispatch_result = self.mqtt_publisher.dispatch_cluster_mission(
+                    mission_id=mission_id,
+                    sub_missions=mission.sub_missions
+                )
+                
+                # 记录下发结果到协调事件
+                self.handle_coordination_event(
+                    mission_id=mission_id,
+                    event_type="MISSION_DISPATCHED",
+                    uav_id="console",
+                    data={
+                        "dispatch_result": dispatch_result,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                )
+        
+        elif status in ["SUCCEEDED", "FAILED", "CANCELLED"]:
+            mission.completed_at = datetime.utcnow()
+        
+        self.db.commit()
+        return True
         mission = self.db.query(ClusterMission).filter(ClusterMission.id == mission_id).first()
         if not mission:
             return False

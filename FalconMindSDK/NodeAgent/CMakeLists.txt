@@ -98,7 +98,31 @@ else()
     set(PAHOMQTTCPP_FOUND FALSE)
 endif()
 
-# 查找 FalconMindSDK
+# 解耦架构：NodeAgent 不直接依赖 SDK
+# SDK 将在运行时通过动态加载器加载
+# 只需包含 SDK 接口头文件路径（用于编译）
+if(NODEAGENT_STANDALONE)
+    # 独立编译模式
+    # 查找 SDK 接口头文件（仅用于编译，不链接库）
+    find_path(FALCONMINDSDK_INTERFACE_DIR
+        NAMES nodeagent/sdk/SdkInterface.h
+        PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../NodeAgent/include
+              ${CMAKE_CURRENT_SOURCE_DIR}/include
+    )
+    
+    if(FALCONMINDSDK_INTERFACE_DIR)
+        message(STATUS "NodeAgent: Found SDK interface headers at ${FALCONMINDSDK_INTERFACE_DIR}")
+    else()
+        message(WARNING "NodeAgent: SDK interface headers not found, using local copy")
+        set(FALCONMINDSDK_INTERFACE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    endif()
+    
+    message(STATUS "NodeAgent: Decoupled mode - SDK will be loaded at runtime")
+else()
+    # 子目录模式（开发/测试时使用）
+    set(FALCONMINDSDK_INTERFACE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../NodeAgent/include)
+    message(STATUS "NodeAgent: Using SDK interface headers from source")
+endif()
 if(NODEAGENT_STANDALONE)
     # 独立编译模式: SDK在兄弟目录
     find_path(FALCONMINDSDK_INCLUDE_DIR
@@ -179,10 +203,48 @@ add_library(nodeagent
     src/DistributedTaskAllocator.cpp
     src/CrossPartitionConflictResolver.cpp
     src/PredictiveReconnector.cpp
+    # SDK 动态加载器（解耦关键）
+    src/sdk/SdkLoader.cpp
+)
+    src/NodeAgent.cpp
+    src/UplinkClient.cpp
+    src/DownlinkClient.cpp
+    src/CommandHandler.cpp
+    src/MissionHandler.cpp
+    src/FlowHandler.cpp
+    src/MessageAck.cpp
+    src/MultiUavManager.cpp
+    src/MqttUplinkClient.cpp
+    src/MqttDownlinkClient.cpp
+    src/Logger.cpp
+    src/ErrorStatistics.cpp
+    src/ReconnectManager.cpp
+    src/LocalStore.cpp
+    src/OfflineAutonomyManager.cpp
+    src/SwarmPartitionManager.cpp
+    src/InterUavManager.cpp
+    src/StateMachine.cpp
+    src/ThreadManager.cpp
+    src/HeartbeatMonitor.cpp
+    src/RuleEngine.cpp
+    src/ConfigurationManager.cpp
+    src/MetricsCollector.cpp
+    src/AsyncLogger.cpp
+    src/DistributedTaskAllocator.cpp
+    src/CrossPartitionConflictResolver.cpp
+    src/PredictiveReconnector.cpp
 )
 
 
 target_include_directories(nodeagent
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${FALCONMINDSDK_INTERFACE_DIR}
+)
+
+# 注意：NodeAgent 不链接任何 SDK 库
+# SDK 将在运行时通过 SdkLoader 动态加载
+# target_link_libraries(nodeagent PRIVATE falconmind_sdk)  # 已移除
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )

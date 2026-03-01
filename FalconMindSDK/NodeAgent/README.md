@@ -1,5 +1,40 @@
 # NodeAgent - UAV 离线自治系统
 
+> **生产就绪** | **P0/P1/P2 全部完成** | **15,000+ 行代码** | **250+ 测试用例** | **与 SDK 解耦**
+
+NodeAgent 是运行在 UAV 边缘设备上的离线自治代理，支持 GCS 失联和机组失联场景下的自主决策。
+
+## 🏗️ 解耦架构设计
+
+NodeAgent 采用**运行时解耦架构**，与 FalconMindSDK 在编译时和运行时完全独立：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      解耦架构层次                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────────────┐          ┌──────────────────────┐ │
+│  │    NodeAgent         │          │   FalconMindSDK      │ │
+│  │   (独立可执行文件)    │◄────────►│   (共享库 .so)       │ │
+│  │                      │  dlopen  │                      │ │
+│  │  - 独立编译          │  运行时   │  - 独立编译          │ │
+│  │  - 不依赖SDK头文件   │  加载    │  - 导出C接口         │ │
+│  │  - 动态加载SDK       │          │  - 工厂模式          │ │
+│  └──────────────────────┘          └──────────────────────┘ │
+│                                                              │
+│  通信方式：C接口 + 函数指针（避免C++ ABI问题）                │
+│                                                              │
+│  优势：                                                      │
+│  ✅ 编译时独立（分别编译）                                    │
+│  ✅ 运行时解耦（动态加载）                                    │
+│  ✅ 版本兼容（接口版本检查）                                  │
+│  ✅ 语言无关（可用其他语言实现NodeAgent）                     │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 核心组件
+
 > **生产就绪** | **P0/P1/P2 全部完成** | **15,000+ 行代码** | **250+ 测试用例**
 
 NodeAgent 是运行在 UAV 边缘设备上的离线自治代理，支持 GCS 失联和机组失联场景下的自主决策。
@@ -73,7 +108,91 @@ sudo systemctl start nodeagent
 sudo journalctl -u nodeagent -f
 ```
 
-### 源码编译
+### 源码编译（解耦模式）
+
+NodeAgent 与 SDK 采用**编译时解耦**设计，两者独立编译：
+
+#### 1. 编译 SDK（生成共享库）
+
+```bash
+cd FalconMindSDK
+mkdir -p build && cd build
+
+# 编译 SDK 为共享库
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DBUILD_SHARED_LIBS=ON \
+         -DFALCONMINDSDK_BUILD_RKNN_BACKEND=ON
+make -j$(nproc)
+
+# 生成的库文件
+ls -la libfalconmind_sdk.so*
+```
+
+#### 2. 编译 NodeAgent（独立编译，不链接 SDK）
+
+```bash
+cd FalconMindSDK/NodeAgent
+mkdir -p build && cd build
+
+# 独立编译（不依赖 SDK 库）
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DNODEAGENT_STANDALONE=ON
+make -j$(nproc)
+
+# 检查 NodeAgent 不链接 SDK 库
+ldd nodeagent_demo | grep falconmind
+# 应该没有输出（表示未链接）
+```
+
+#### 3. 运行（运行时加载 SDK）
+
+```bash
+# 将 SDK 库复制到 NodeAgent 目录
+# 或设置库路径
+export LD_LIBRARY_PATH=/path/to/sdk/build:$LD_LIBRARY_PATH
+
+# 运行 NodeAgent（自动加载 SDK）
+./nodeagent_demo
+
+# 预期输出：
+# [SdkLoader] Loading SDK library: libfalconmind_sdk.so
+# [SdkLoader] SDK library loaded successfully
+# [SdkLoader] SDK Version: 1.0.0
+# [SdkLoader] Interface Version: 1
+# [NodeAgent] SDK connection initialized successfully
+```
+
+### 接口契约
+
+NodeAgent 通过 `SdkInterface.h` 定义的接口与 SDK 通信：
+
+```cpp
+// NodeAgent 只包含此头文件
+#include "nodeagent/sdk/SdkInterface.h"
+
+// 运行时加载
+SdkLoader loader;
+loader.load("./libfalconmind_sdk.so");
+
+// 获取工厂
+auto factory = loader.createServiceFactory();
+
+// 创建服务（不依赖 SDK 具体类）
+auto flightService = factory->createFlightConnectionService();
+flightService->connect(config);
+```
+
+### 传统编译模式（开发调试）
+
+如需使用传统链接模式（编译时链接 SDK）：
+
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DNODEAGENT_STANDALONE=OFF  # 子目录模式
+cd FalconMindSDK/build
+make -j$(nproc)
+# NodeAgent 将自动编译并链接 SDK
+```
 
 ```bash
 cd FalconMindSDK/NodeAgent

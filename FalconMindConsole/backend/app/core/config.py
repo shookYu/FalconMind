@@ -30,7 +30,12 @@ class Settings(BaseSettings):
     ]
     
     # MQTT (可选)
-    MQTT_ENABLED: bool = False
+    # MQTT (用于任务下发)
+    MQTT_ENABLED: bool = True
+    MQTT_BROKER_HOST: str = "localhost"
+    MQTT_BROKER_PORT: int = 1883
+    MQTT_USERNAME: str = ""
+    MQTT_PASSWORD: str = ""
     MQTT_BROKER_HOST: str = "localhost"
     MQTT_BROKER_PORT: int = 1883
     MQTT_USERNAME: str = ""
