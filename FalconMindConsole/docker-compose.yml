@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: falconmind-postgres
+    environment:
+      POSTGRES_USER: falconmind
+      POSTGRES_PASSWORD: falconmind123
+      POSTGRES_DB: falconmind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U falconmind"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - falconmind-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: falconmind-redis
+    command: redis-server --requirepass falconmind123
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - falconmind-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: falconmind-backend
+    environment:
+      DATABASE_URL: postgresql://falconmind:falconmind123@postgres:5432/falconmind
+      REDIS_URL: redis://:falconmind123@redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - falconmind-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: falconmind-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - falconmind-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  falconmind-network:
+    driver: bridge

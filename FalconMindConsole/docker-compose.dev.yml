@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: falconmind-postgres
+    environment:
+      POSTGRES_USER: falconmind
+      POSTGRES_PASSWORD: falconmind123
+      POSTGRES_DB: falconmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U falconmind"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - falconmind-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: falconmind-redis
+    command: redis-server --requirepass falconmind123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - falconmind-network
+
+  # MQTT Broker (可选)
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: falconmind-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - falconmind-network
+    profiles:
+      - mqtt
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  falconmind-network:
+    driver: bridge
