@@ -1,0 +1,14 @@
+<map id="falconmind::sdk::high_level::SurveillanceConfig" name="falconmind::sdk::high_level::SurveillanceConfig">
+<area shape="rect" id="node1" title="巡逻任务配置" alt="" coords="1303,126,1493,167"/>
+<area shape="rect" id="node2" title=" " alt="" coords="281,169,492,210"/>
+<area shape="rect" id="node5" href="$structfalconmind_1_1sdk_1_1high__level_1_1PerimeterConfig.html" title="周界配置" alt="" coords="633,126,808,167"/>
+<area shape="rect" id="node3" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="5,169,168,210"/>
+<area shape="rect" id="node4" title=" " alt="" coords="961,119,1161,175"/>
+<area shape="rect" id="node6" title=" " alt="" coords="343,60,430,87"/>
+<area shape="rect" id="node9" href="$structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html" title="警报配置" alt="" coords="639,53,802,94"/>
+<area shape="rect" id="node7" title=" " alt="" coords="17,53,156,94"/>
+<area shape="rect" id="node8" title=" " alt="" coords="949,53,1172,94"/>
+<area shape="rect" id="node10" title=" " alt="" coords="954,250,1167,291"/>
+<area shape="rect" id="node11" href="$structfalconmind_1_1sdk_1_1high__level_1_1TimeRule.html" title="时间规则" alt="" coords="639,250,802,291"/>
+<area shape="rect" id="node12" title=" " alt="" coords="328,257,445,284"/>
+</map>

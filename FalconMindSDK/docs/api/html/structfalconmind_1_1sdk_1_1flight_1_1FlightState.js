@@ -1,0 +1,26 @@
+var structfalconmind_1_1sdk_1_1flight_1_1FlightState =
+[
+    [ "alt", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a93fbd96a518e1aade3a406c5ca232eef", null ],
+    [ "armed", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a8abd3d497ea0a44a02670e3644a1061d", null ],
+    [ "ax", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a546f6b6f543486a691e56bde01224d4c", null ],
+    [ "ay", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a1ac504e73f43588754e3bc8d721fd517", null ],
+    [ "az", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a3e5cee6f82af0fbed2e392605095d744", null ],
+    [ "batteryPercent", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a2ef1fede8ddb4504553104ff73b5d099", null ],
+    [ "batteryVoltageMv", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a251e0efbadd71b59bdb8424c7597bfc1", null ],
+    [ "flightMode", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a7c7e45bd0c415814d1aad10c1fd7774c", null ],
+    [ "gpsFixType", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a89d62719411064866aba003a3ab1982c", null ],
+    [ "gx", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#ac2f22355e21d376b8d7943d64b4626fe", null ],
+    [ "gy", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a259157b72c6959d71f3b1dfa3770f2e0", null ],
+    [ "gz", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#ab3ae1e3dd17882398689b6ef1b1f3fde", null ],
+    [ "hdop", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#ada748b2f7f2ccc94f02430f014125505", null ],
+    [ "inAir", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a5ac339df1f3a31e789c1c178538a16ca", null ],
+    [ "lat", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a11cd7b8c20529be4f30b51668012797c", null ],
+    [ "lon", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#aab750fcee693b1d3e71fd2c1015bec59", null ],
+    [ "numSat", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a6a5bf4435123a06b9e2a745aebb83e55", null ],
+    [ "pitch", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a742a5edfecbde13fb469947abd120b27", null ],
+    [ "roll", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#ae434b6f0302b4c24207cc4f55bb1807d", null ],
+    [ "vx", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a26040f864e0a3c1a6fc208be1a292b58", null ],
+    [ "vy", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#aeff9261ec25f0aa9d3cd2010d49bb1be", null ],
+    [ "vz", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a8350a1ed0170d4518c4ca5bd711642be", null ],
+    [ "yaw", "structfalconmind_1_1sdk_1_1flight_1_1FlightState.html#a2d632d270d4bbb972ce0f544e23c0375", null ]
+];

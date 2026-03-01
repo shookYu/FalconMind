@@ -1,0 +1,4 @@
+<map id="falconmind::sdk::high_level::WaypointConfig" name="falconmind::sdk::high_level::WaypointConfig">
+<area shape="rect" id="node1" title="航点配置" alt="" coords="5,109,176,151"/>
+<area shape="rect" id="node2" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="9,5,172,47"/>
+</map>

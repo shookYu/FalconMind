@@ -1,0 +1,26 @@
+var classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission =
+[
+    [ "~SurveillanceMission", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a423369e06b870991441e8ad685d49f5e", null ],
+    [ "create", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a3ab71fafe3db3a8ff3e82ff605a94e04", null ],
+    [ "exportAlertPhotos", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a4dafe0daa7ae8a335308a063a34425e8", null ],
+    [ "generateReport", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#ab7a61d4d40428c8d9953fbf0d2922d50", null ],
+    [ "getAlertHistory", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#aca4227ca7c31dfc20deea4533b26c654", null ],
+    [ "getCurrentWaypointIndex", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a92e90394c6cb43d7c2a25fa00af6a31c", null ],
+    [ "getLastAlert", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a8042875118d0aa9ab0169f804a6ca88e", null ],
+    [ "getStats", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a258ab004a1b34c957507348b5acc96b1", null ],
+    [ "isPatrolling", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a06c6c22152889120c250b5f744321949", null ],
+    [ "onAlert", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#aea033babf80bc84621c90821d10ddc1c", null ],
+    [ "onIntrusionDetected", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#ac2aedeb7bea641d5eb7c7095e6547664", null ],
+    [ "onPatrolCompleted", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a8b512a1e31c09695186cd9dbbdc833c6", null ],
+    [ "onStatusChanged", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#aba70af5b29da6642f55e7b8713d7efd8", null ],
+    [ "onWaypointReached", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#aa71738c4dd89c53d09d2fa912058bb45", null ],
+    [ "pause", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a0f27a1bb8bde91a85ced8b26e69bdb5b", null ],
+    [ "respondToLocation", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a8e72a1df5885fc757354040a153ea7ea", null ],
+    [ "resume", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#adbb38ac5083551f55f0bcf384f565c1a", null ],
+    [ "skipToNextWaypoint", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a017c58ac9fd4d7995c6ed3c6ab80d703", null ],
+    [ "startPatrol", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a4972f03cd43660b24db8a438ee26d2ea", null ],
+    [ "startPatrolNow", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a0c5389acc1cb3f5a7883f0568b0c41d5", null ],
+    [ "status", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a02ad759a0809b2965ed0a91903e027d8", null ],
+    [ "stopPatrol", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#aa0cd1a75a438e775a56d11beddb9f5dd", null ],
+    [ "SurveillanceMissionBuilder", "classfalconmind_1_1sdk_1_1high__level_1_1SurveillanceMission.html#a0bc3aceea14504a5fc0971f805271e0c", null ]
+];

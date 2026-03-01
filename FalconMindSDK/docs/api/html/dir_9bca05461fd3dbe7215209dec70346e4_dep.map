@@ -1,0 +1,15 @@
+<map id="include/falconmind/sdk" name="include/falconmind/sdk">
+<area shape="rect" id="node2" href="dir_263e9675ed4161bd07c5088d8028dcc7.html" title="c_api" alt="" coords="843,63,915,111"/>
+<area shape="rect" id="node3" href="dir_a2ca3ae173d23b32010a930c88b27b13.html" title="cluster" alt="" coords="747,63,819,111"/>
+<area shape="rect" id="node4" href="dir_8e589d9fbfd615d93b0e55781fac0c16.html" title="core" alt="" coords="651,63,723,111"/>
+<area shape="rect" id="node5" href="dir_e6320dfac8cd552f2cd743dbc78ccc44.html" title="flight" alt="" coords="555,63,627,111"/>
+<area shape="rect" id="node6" href="dir_8509d47a4942b113ecbf3d7fdfa6e35e.html" title="high_level" alt="" coords="237,159,326,207"/>
+<area shape="rect" id="node7" href="dir_0a8be39ba86b72cbfd1f6d5ad0b5a2b0.html" title="mission" alt="" coords="457,63,530,111"/>
+<area shape="rect" id="node8" href="dir_2933443d6d8699a007bd1a738d211102.html" title="perception" alt="" coords="341,63,432,111"/>
+<area shape="rect" id="node9" href="dir_3f21de863aa799ce2b70365f374c2785.html" title="ros2" alt="" coords="245,63,317,111"/>
+<area shape="rect" id="edge1-headlabel" href="dir_000011_000009.html" title="3" alt="" coords="285,133,294,148"/>
+<area shape="rect" id="node10" href="dir_bc11de280e81a9b1dc3de4cce9075c30.html" title="sensors" alt="" coords="149,63,221,111"/>
+<area shape="rect" id="node11" href="dir_eedb5d0d2c7f5e5810a91db2bb898980.html" title="telemetry" alt="" coords="38,63,125,111"/>
+<area shape="rect" id="clust2" href="dir_9bca05461fd3dbe7215209dec70346e4.html" alt="" coords="27,52,1021,217"/>
+<area shape="rect" id="clust1" href="dir_9c87674373f563e73ac3eb91852e0846.html" title="falconmind" alt="" coords="16,16,1032,228"/>
+</map>

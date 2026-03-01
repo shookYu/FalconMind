@@ -1,7 +1,8 @@
-// FalconMindSDK - Flight related types (week2 skeleton)
+// FalconMindSDK - Flight related types
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace falconmind::sdk::flight {
 
@@ -17,7 +18,7 @@ struct FlightConnectionConfig {
     MavlinkVersion mavlinkVersion{MavlinkVersion::V2}; // 默认使用 MAVLink v2
 };
 
-// FlightState 与 MAVLink 典型字段映射关系（已在 FlightConnectionService 中实现）：
+// FlightState 与 MAVLink 典型字段映射关系：
 // - lat/lon/alt  ← GLOBAL_POSITION_INT.lat/lon/alt（1e-7 deg → deg，mm → m）
 // - roll/pitch/yaw ← ATTITUDE.roll/pitch/yaw
 // - vx/vy/vz ← GLOBAL_POSITION_INT.vx/vy/vz
@@ -57,9 +58,14 @@ struct FlightState {
     int    gpsFixType{0};
     int    numSat{0};
     double hdop{99.0};  // Horizontal dilution of precision
+    
+    // Vehicle status
+    bool armed{false};
+    bool inAir{false};
+    int flightMode{0};  // 当前飞行模式
 };
 
-// FlightCommand 与 MAVLink COMMAND_LONG 的典型映射（示意）：
+// FlightCommand 与 MAVLink COMMAND_LONG 的典型映射：
 // - Arm           → MAV_CMD_COMPONENT_ARM_DISARM
 // - Disarm        → MAV_CMD_COMPONENT_ARM_DISARM
 // - Takeoff       → MAV_CMD_NAV_TAKEOFF
@@ -70,13 +76,25 @@ enum class FlightCommandType {
     Disarm,
     Takeoff,
     Land,
-    ReturnToLaunch
+    ReturnToLaunch,
+    NavigateTo,         // 导航到指定位置
+    Orbit,              // 绕点盘旋
+    Hover,              // 悬停
+    StartMission,       // 开始执行任务
+    SetManualMode,      // 设置手动模式
+    SetPositionMode,    // 设置定点模式
+    SetOffboardMode,    // 设置外部控制模式
+    SendMavlinkRaw      // 发送原始MAVLink消息
 };
 
 struct FlightCommand {
     FlightCommandType type{FlightCommandType::Arm};
-    double targetAlt{0.0};  // Takeoff/Land 时可用
+    double targetAlt{0.0};              // 目标高度
+    double targetLat{0.0};              // 目标纬度
+    double targetLon{0.0};              // 目标经度
+    double orbitRadius{0.0};            // 盘旋半径
+    double orbitVelocity{0.0};          // 盘旋速度
+    std::vector<uint8_t> mavlinkData;   // 原始MAVLink消息数据
 };
 
 } // namespace falconmind::sdk::flight
-

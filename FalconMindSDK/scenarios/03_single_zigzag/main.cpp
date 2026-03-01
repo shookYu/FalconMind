@@ -1,58 +1,71 @@
 /**
  * @file main.cpp
- * @brief 场景1.3: 单机Z字形搜索(ZIGZAG) - 不规则多边形
+ * @brief 场景1.3: 单机Z字形搜索(ZIGZAG) - 主程序
+ * 
+ * 使用真实的MAVLink连接PX4飞控
  */
 
+#include "ZigzagScenario.h"
 #include <iostream>
-#include <vector>
-#include "falconmind/sdk/high_level/SearchMission.h"
-#include "falconmind/sdk/core/Logger.h"
+#include <thread>
+#include <cstring>
 
-using namespace falconmind::sdk;
-using namespace falconmind::sdk::high_level;
-using namespace falconmind::sdk::mission;
+using namespace falconmind::scenarios;
 
-class ZigzagSearchScenario {
-public:
-    bool execute() {
-        LOG_INFO("Scenario") << "=== 场景1.3: 单机Z字形搜索(ZIGZAG) ===";
-        
-        // 不规则五边形搜索区域
-        std::vector<GeoPoint> searchArea = {
-            {34.052000, -118.244000, 50.0f},  // 点1
-            {34.052500, -118.243500, 50.0f},  // 点2
-            {34.053000, -118.244000, 50.0f},  // 点3
-            {34.052800, -118.244500, 50.0f},  // 点4
-            {34.052200, -118.244500, 50.0f}   // 点5
-        };
-        
-        LOG_INFO("Scenario", "不规则多边形搜索区域: " + 
-                 std::to_string(searchArea.size()) + "个顶点");
-        
-        auto searchResult = SearchMission::create()
-            .withFlightConnection("udp://127.0.0.1:14550")
-            .withSearchArea(searchArea)
-            .withPattern(SearchPattern::ZIGZAG)
-            .withAltitude(70.0f)
-            .withSpeed(7.0f)
-            .withLineSpacing(25.0f)
-            .build();
-        
-        if (!searchResult) {
-            LOG_ERROR("Scenario") << "创建失败: " + searchResult.errorMessage();
-            return false;
+void printUsage(const char* program)
+{
+    std::cout << "========================================\n";
+    std::cout << "场景1.3: 单机Z字形搜索(ZIGZAG)\n";
+    std::cout << "【真实飞控连接版本】\n";
+    std::cout << "========================================\n\n";
+    std::cout << "用法: " << program << " [连接地址]\n\n";
+    std::cout << "连接地址:\n";
+    std::cout << "  udp://127.0.0.1:14550    UDP连接（默认）\n";
+    std::cout << "  /dev/ttyUSB0             串口连接\n\n";
+}
+
+void printVersion()
+{
+    std::cout << "场景1.3: 单机Z字形搜索(ZIGZAG) v1.0.0\n";
+    std::cout << "FalconMind SDK Scenarios\n";
+}
+
+int main(int argc, char* argv[])
+{
+    std::string connection = "udp://127.0.0.1:14550";
+    
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
+            printUsage(argv[0]);
+            return 0;
         }
-        
-        auto result = searchResult.value()->execute();
-        
-        LOG_INFO("Scenario", "ZIGZAG搜索完成，总航点: " + 
-                 std::to_string(result.waypointsTotal));
-        
-        return result.success;
+        if (std::strcmp(argv[i], "-v") == 0 || std::strcmp(argv[i], "--version") == 0) {
+            printVersion();
+            return 0;
+        }
+        if (argv[i][0] != '-') {
+            connection = argv[i];
+        }
     }
-};
-
-int main() {
-    std::cout << "场景1.3: 单机Z字形搜索(ZIGZAG)" << std::endl;
-    return ZigzagSearchScenario().execute() ? 0 : 1;
+    
+    ZigzagConfig config;
+    config.connection = connection;
+    
+    std::cout << "\n========================================" << std::endl;
+    std::cout << "配置信息:" << std::endl;
+    std::cout << "  连接地址: " << config.connection << std::endl;
+    std::cout << "  搜索高度: " << config.searchAltitude << "m" << std::endl;
+    std::cout << "  飞行速度: " << config.speed << "m/s" << std::endl;
+    std::cout << "  线间距: " << config.lineSpacing << "m" << std::endl;
+    std::cout << "========================================\n" << std::endl;
+    
+    ZigzagScenario scenario(config);
+    
+    scenario.setProgressCallback([](int current, int total, const std::string& status) {
+        (void)current; (void)total; (void)status;
+    });
+    
+    bool success = scenario.execute();
+    
+    return success ? 0 : 1;
 }

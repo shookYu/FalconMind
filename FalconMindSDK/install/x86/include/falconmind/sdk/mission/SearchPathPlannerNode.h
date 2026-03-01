@@ -31,19 +31,14 @@ public:
     void stop() override;
     void process() override;
 
-private:
-    // 生成网格搜索路径（蛇形）
+    // 生成路径方法（由SearchMissionAction调用）
     void generateLawnMowerPath();
-    
-    // 生成螺旋搜索路径
     void generateSpiralPath();
-    
-    // 生成Z字形搜索路径
     void generateZigzagPath();
-    
-    // 生成扇形搜索路径
     void generateSectorPath();
-    
+
+private:
+    private:
     // 计算多边形的边界框
     void computeBoundingBox(const std::vector<GeoPoint>& polygon,
                            double& minLat, double& maxLat,

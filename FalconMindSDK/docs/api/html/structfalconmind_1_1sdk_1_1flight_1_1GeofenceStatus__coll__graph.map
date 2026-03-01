@@ -1,0 +1,5 @@
+<map id="falconmind::sdk::flight::GeofenceStatus" name="falconmind::sdk::flight::GeofenceStatus">
+<area shape="rect" id="node1" title="围栏状态" alt="" coords="5,200,172,241"/>
+<area shape="rect" id="node2" title=" " alt="" coords="45,96,132,123"/>
+<area shape="rect" id="node3" title=" " alt="" coords="19,5,158,47"/>
+</map>

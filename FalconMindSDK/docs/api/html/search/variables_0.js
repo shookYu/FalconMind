@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['absolutealtitude_1059',['absoluteAltitude',['../structfalconmind_1_1sdk_1_1high__level_1_1VehicleStatus.html#adca2d43824dde7949bd39e5df82f7824',1,'falconmind::sdk::high_level::VehicleStatus']]],
+  ['acceleration_1060',['acceleration',['../structfalconmind_1_1sdk_1_1high__level_1_1TelemetryData.html#a1dfa7ab14c2bd8f2f6e66ed6eef21f87',1,'falconmind::sdk::high_level::TelemetryData']]],
+  ['acceptanceradius_1061',['acceptanceRadius',['../structfalconmind_1_1sdk_1_1high__level_1_1WaypointConfig.html#ace6bcdc7d1baa42968260b394c473922',1,'falconmind::sdk::high_level::WaypointConfig']]],
+  ['action_1062',['action',['../structfalconmind_1_1sdk_1_1high__level_1_1WaypointConfig.html#a6546d9d867d91693ca6905bc16e28596',1,'falconmind::sdk::high_level::WaypointConfig']]],
+  ['actiondelay_1063',['actionDelay',['../structfalconmind_1_1sdk_1_1high__level_1_1WaypointConfig.html#a8ddd4361812b39be4a1e39e616bb22a5',1,'falconmind::sdk::high_level::WaypointConfig']]],
+  ['activerules_1064',['activeRules',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceConfig.html#ad0bbb258dca29bd2e99a28160ba15d7c',1,'falconmind::sdk::high_level::SurveillanceConfig']]],
+  ['airspeed_1065',['airSpeed',['../structfalconmind_1_1sdk_1_1high__level_1_1VehicleStatus.html#aa8b9ee3a1b225da451b9461512d7af11',1,'falconmind::sdk::high_level::VehicleStatus']]],
+  ['alertconfigs_1066',['alertConfigs',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceConfig.html#ad3c3c3db4928e9333e25fe578d8f2736',1,'falconmind::sdk::high_level::SurveillanceConfig']]],
+  ['alertmessage_1067',['alertMessage',['../structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html#a364f9b33da170377a2edb9098f76ac84',1,'falconmind::sdk::high_level::AlertConfig']]],
+  ['alertstriggered_1068',['alertsTriggered',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceStats.html#a7b6afb1e5afaed3cdd02313fd6772b5b',1,'falconmind::sdk::high_level::SurveillanceStats']]],
+  ['altitude_1069',['altitude',['../structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html#a4f6b6058c34aea2fbbff8f800f61e9fc',1,'falconmind::sdk::high_level::GeoPoint::altitude()'],['../structfalconmind_1_1sdk_1_1high__level_1_1SearchMissionConfig.html#aa63aab9d1975f4c520051b937076a6e7',1,'falconmind::sdk::high_level::SearchMissionConfig::altitude()']]],
+  ['areacovered_1070',['areaCovered',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchResult.html#a26ba24a47145c6c348d4a8145553738f',1,'falconmind::sdk::high_level::SearchResult']]],
+  ['autolandoncriticalbattery_1071',['autoLandOnCriticalBattery',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceConfig.html#a813e3fd7822da3ae62d8413eef2a57dc',1,'falconmind::sdk::high_level::SurveillanceConfig']]],
+  ['autophotoondetection_1072',['autoPhotoOnDetection',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchMissionConfig.html#adcd45697f649b94f7c07fc84c49c7943',1,'falconmind::sdk::high_level::SearchMissionConfig']]],
+  ['autoreturnonlowbattery_1073',['autoReturnOnLowBattery',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceConfig.html#a2a971239945997f7e79ad2c5cf9348b6',1,'falconmind::sdk::high_level::SurveillanceConfig']]],
+  ['autosearchwhenlost_1074',['autoSearchWhenLost',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingMissionConfig.html#a9197e38ab948864ef7f5daa8e402ed27',1,'falconmind::sdk::high_level::TrackingMissionConfig']]],
+  ['averagedistance_1075',['averageDistance',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#a26ead79ebfbe39d012d0e729dee5d21b',1,'falconmind::sdk::high_level::TrackingStats']]],
+  ['averagewatchtime_1076',['averageWatchTime',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceStats.html#a4edb37d65f9742e6bce97a78714229b7',1,'falconmind::sdk::high_level::SurveillanceStats']]]
+];

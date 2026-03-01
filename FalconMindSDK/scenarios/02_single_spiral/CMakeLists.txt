@@ -23,6 +23,7 @@ set(TARGET_NAME "scenario_${SCENARIO_NAME}")
 
 add_executable(${TARGET_NAME}
     main.cpp
+    SpiralScenario.cpp
 )
 
 target_include_directories(${TARGET_NAME} PRIVATE

@@ -1,0 +1,68 @@
+/**
+ * @brief 生成Z字形搜索路径
+ * 
+ * 算法：在多边形区域内生成Z字形扫描线
+ * 1. 计算区域的包围盒
+ * 2. 生成平行的扫描线（水平或垂直）
+ * 3. 按Z字形顺序连接形成航点
+ */
+std::vector<Waypoint> ZigzagScenario::generateSearchPath()
+{
+    std::vector<Waypoint> waypoints;
+    
+    // 定义不规则多边形搜索区域（示例：梯形区域）
+    struct GeoPoint { float lat, lon; };
+    std::vector<GeoPoint> searchArea = {
+        {config_.centerLat - 0.0005f, config_.centerLon - 0.0008f},  // 左下
+        {config_.centerLat - 0.0005f, config_.centerLon + 0.0008f},  // 右下
+        {config_.centerLat + 0.0005f, config_.centerLon + 0.0006f},  // 右上
+        {config_.centerLat + 0.0005f, config_.centerLon - 0.0006f},  // 左上
+    };
+    
+    // 计算边界
+    float minLat = searchArea[0].lat, maxLat = searchArea[0].lat;
+    float minLon = searchArea[0].lon, maxLon = searchArea[0].lon;
+    for (const auto& p : searchArea) {
+        minLat = std::min(minLat, p.lat);
+        maxLat = std::max(maxLat, p.lat);
+        minLon = std::min(minLon, p.lon);
+        maxLon = std::max(maxLon, p.lon);
+    }
+    
+    // Home点
+    float homeLat = minLat;
+    float homeLon = minLon;
+    waypoints.push_back(Waypoint{homeLat, homeLon, config_.takeoffAltitude, config_.speed});
+    
+    // 转换为米
+    float metersPerDegreeLon = METERS_PER_DEGREE_LAT * std::cos((minLat + maxLat) / 2.0f * PI / 180.0);
+    float widthMeters = (maxLon - minLon) * metersPerDegreeLon;
+    
+    int numLines = static_cast<int>(widthMeters / config_.lineSpacing) + 1;
+    
+    std::cout << "  区域宽度: " << widthMeters << "m" << std::endl;
+    std::cout << "  航线数量: " << numLines << std::endl;
+    std::cout << "  线间距: " << config_.lineSpacing << "m" << std::endl;
+    
+    // 生成Z字形航线（水平扫描）
+    bool goingUp = true;
+    for (int i = 0; i < numLines; ++i) {
+        float lon = minLon + (i * config_.lineSpacing / metersPerDegreeLon);
+        if (lon > maxLon) lon = maxLon;
+        
+        if (goingUp) {
+            waypoints.push_back(Waypoint{minLat, lon, config_.searchAltitude, config_.speed});
+            waypoints.push_back(Waypoint{maxLat, lon, config_.searchAltitude, config_.speed});
+        } else {
+            waypoints.push_back(Waypoint{maxLat, lon, config_.searchAltitude, config_.speed});
+            waypoints.push_back(Waypoint{minLat, lon, config_.searchAltitude, config_.speed});
+        }
+        goingUp = !goingUp;
+    }
+    
+    // 返航点
+    waypoints.push_back(Waypoint{homeLat, homeLon, config_.takeoffAltitude, config_.speed});
+    
+    std::cout << "  生成航点数: " << waypoints.size() << std::endl;
+    return waypoints;
+}

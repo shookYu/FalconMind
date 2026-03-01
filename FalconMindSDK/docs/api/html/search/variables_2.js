@@ -1,0 +1,14 @@
+var searchData=
+[
+  ['center_5fy_1081',['center_y',['../structfalconmind_1_1sdk_1_1ros2_1_1DetectionMsg.html#a7b4af174b3d90168afb912ae198def82',1,'falconmind::sdk::ros2::DetectionMsg']]],
+  ['classname_1082',['className',['../structfalconmind_1_1sdk_1_1high__level_1_1TargetInfo.html#ae77e47fdc05ff490830add5c321d6863',1,'falconmind::sdk::high_level::TargetInfo']]],
+  ['command_1083',['command',['../structfalconmind_1_1sdk_1_1ros2_1_1Command.html#a0cdbf983a2ba725c371994711bab531a',1,'falconmind::sdk::ros2::Command']]],
+  ['confidence_1084',['confidence',['../structfalconmind_1_1sdk_1_1high__level_1_1TargetInfo.html#aef45b6fbefffd4365ed2b412a24ef446',1,'falconmind::sdk::high_level::TargetInfo']]],
+  ['confidencethreshold_1085',['confidenceThreshold',['../structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html#a505be56a4d07ce173048bbdf4d2d0e9a',1,'falconmind::sdk::high_level::AlertConfig']]],
+  ['cooldownseconds_1086',['cooldownSeconds',['../structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html#ac28ed362cd8fe606bea3627fa984f51f',1,'falconmind::sdk::high_level::AlertConfig']]],
+  ['coveragepercent_1087',['coveragePercent',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchResult.html#a45e7476026aae3d0d231cd84060e8ca0',1,'falconmind::sdk::high_level::SearchResult::coveragePercent()'],['../structfalconmind_1_1sdk_1_1high__level_1_1SearchProgress.html#a05d96b18f8ca49b9bff30fb21863217b',1,'falconmind::sdk::high_level::SearchProgress::coveragePercent()']]],
+  ['criticalbatterythreshold_1088',['criticalBatteryThreshold',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceConfig.html#a6e138af44e110078e250c5375522e9dd',1,'falconmind::sdk::high_level::SurveillanceConfig']]],
+  ['currentposition_1089',['currentPosition',['../structfalconmind_1_1sdk_1_1flight_1_1GeofenceStatus.html#a7a5d55bf05b65e4dc3c1de58379420d4',1,'falconmind::sdk::flight::GeofenceStatus::currentPosition()'],['../structfalconmind_1_1sdk_1_1high__level_1_1MissionProgress.html#ac984da641d526aae2d43d73f003f1b81',1,'falconmind::sdk::high_level::MissionProgress::currentPosition()'],['../structfalconmind_1_1sdk_1_1high__level_1_1SearchProgress.html#a9bd98f02f5505a0a54d82cb992126cbb',1,'falconmind::sdk::high_level::SearchProgress::currentPosition()']]],
+  ['currentstatus_1090',['currentStatus',['../structfalconmind_1_1sdk_1_1flight_1_1GeofenceStatus.html#a9fa31a5af922d35c74489905b8f3977d',1,'falconmind::sdk::flight::GeofenceStatus']]],
+  ['currentwaypoint_1091',['currentWaypoint',['../structfalconmind_1_1sdk_1_1high__level_1_1MissionProgress.html#afc06120bb136769973f284197e5df7bd',1,'falconmind::sdk::high_level::MissionProgress::currentWaypoint()'],['../structfalconmind_1_1sdk_1_1high__level_1_1SearchProgress.html#a2874f66d10eab17ae3f1b682e1968123',1,'falconmind::sdk::high_level::SearchProgress::currentWaypoint()']]]
+];

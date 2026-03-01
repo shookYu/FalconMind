@@ -1,0 +1,6 @@
+<map id="include/falconmind/sdk/high_level/FlightPipeline.h" name="include/falconmind/sdk/high_level/FlightPipeline.h">
+<area shape="rect" id="node1" title="飞控连接与管理流水线" alt="" coords="145,5,371,47"/>
+<area shape="rect" id="node2" href="$FalconMindROS2Node_8h.html" title="ROS2 桥接节点" alt="" coords="9,95,248,136"/>
+<area shape="rect" id="node4" href="$FlightPipeline_8cpp.html" title="Implementation of high&#45;level flight pipeline API." alt="" coords="273,102,505,129"/>
+<area shape="rect" id="node3" href="$FalconMindROS2Node_8cpp.html" title="ROS2 bridge implementation." alt="" coords="5,184,252,211"/>
+</map>

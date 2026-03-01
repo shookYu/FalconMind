@@ -1,0 +1,8 @@
+<map id="falconmind::sdk::high_level::SearchMissionConfig" name="falconmind::sdk::high_level::SearchMissionConfig">
+<area shape="rect" id="node1" title="搜索任务配置" alt="" coords="119,304,323,345"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,200,216,241"/>
+<area shape="rect" id="node3" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="29,96,192,137"/>
+<area shape="rect" id="node4" title=" " alt="" coords="240,207,427,234"/>
+<area shape="rect" id="node5" title=" " alt="" coords="290,103,377,130"/>
+<area shape="rect" id="node6" title=" " alt="" coords="264,5,403,47"/>
+</map>

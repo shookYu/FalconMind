@@ -34,6 +34,14 @@ public:
     void setConfidence(float c) { confidence_ = std::max(0.f, std::min(1.f, c)); }
 
 private:
+    // 数据回调
+    void onImageData(const void* data, size_t size);
+    void onImuData(const void* data, size_t size);
+    void onGnssData(const void* data, size_t size);
+    
+    // 状态发布
+    void publishStatus();
+    
     bool started_{false};
     EnvironmentState currentState_{EnvironmentState::Normal};
     float confidence_{1.0f};

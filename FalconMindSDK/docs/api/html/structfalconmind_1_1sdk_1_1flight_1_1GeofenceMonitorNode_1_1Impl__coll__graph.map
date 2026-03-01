@@ -1,0 +1,10 @@
+<map id="falconmind::sdk::flight::GeofenceMonitorNode::Impl" name="falconmind::sdk::flight::GeofenceMonitorNode::Impl">
+<area shape="rect" id="node1" title=" " alt="" coords="1233,114,1447,155"/>
+<area shape="rect" id="node2" title=" " alt="" coords="240,95,327,121"/>
+<area shape="rect" id="node5" href="$structfalconmind_1_1sdk_1_1flight_1_1GeofenceViolation.html" title="围栏违规事件" alt="" coords="499,146,665,187"/>
+<area shape="rect" id="node7" href="$structfalconmind_1_1sdk_1_1flight_1_1Polygon.html" title="多边形围栏定义" alt="" coords="499,29,665,70"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,87,144,129"/>
+<area shape="rect" id="node4" title=" " alt="" coords="839,209,1076,250"/>
+<area shape="rect" id="node6" title=" " alt="" coords="868,29,1047,70"/>
+<area shape="rect" id="node8" title=" " alt="" coords="193,5,373,32"/>
+</map>

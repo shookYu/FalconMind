@@ -1,0 +1,17 @@
+<map id="include/falconmind/sdk/high_level/ErrorCode.h" name="include/falconmind/sdk/high_level/ErrorCode.h">
+<area shape="rect" id="node1" title="Unified error code system for FalconMind SDK." alt="" coords="931,5,1131,47"/>
+<area shape="rect" id="node2" href="$FlightPipeline_8h.html" title="飞控连接与管理流水线" alt="" coords="406,191,631,233"/>
+<area shape="rect" id="node6" href="$MavlinkClient_8h.html" title="High&#45;level MAVLink client API." alt="" coords="1272,191,1499,233"/>
+<area shape="rect" id="node8" href="$MissionPipeline_8h.html" title="任务执行流水线模板" alt="" coords="791,191,1030,233"/>
+<area shape="rect" id="node13" href="$PerceptionPipeline_8h.html" title="High&#45;level perception pipeline API." alt="" coords="1054,184,1247,240"/>
+<area shape="rect" id="node15" href="$Result_8h.html" title="Result type for error handling." alt="" coords="942,95,1119,136"/>
+<area shape="rect" id="node3" href="$FalconMindROS2Node_8h.html" title="ROS2 桥接节点" alt="" coords="262,295,501,337"/>
+<area shape="rect" id="node5" href="$FlightPipeline_8cpp.html" title="Implementation of high&#45;level flight pipeline API." alt="" coords="5,303,237,329"/>
+<area shape="rect" id="node4" href="$FalconMindROS2Node_8cpp.html" title="ROS2 bridge implementation." alt="" coords="258,392,505,419"/>
+<area shape="rect" id="node7" href="$MavlinkClient_8cpp.html" title="High&#45;level MAVLink client implementation." alt="" coords="1753,303,1986,329"/>
+<area shape="rect" id="node9" href="$SearchMission_8h.html" title="搜索任务专用模板" alt="" coords="795,295,1026,337"/>
+<area shape="rect" id="node10" href="$SurveillanceMission_8h.html" title="监控/安防巡逻任务模板" alt="" coords="1050,288,1254,344"/>
+<area shape="rect" id="node11" href="$TrackingMission_8h.html" title="目标跟踪任务模板" alt="" coords="1279,295,1519,337"/>
+<area shape="rect" id="node12" href="$MissionPipeline_8cpp.html" title="Implementation of high&#45;level mission pipeline API." alt="" coords="525,303,771,329"/>
+<area shape="rect" id="node14" href="$PerceptionPipeline_8cpp.html" title="Implementation of high&#45;level perception pipeline API." alt="" coords="1543,295,1729,337"/>
+</map>

@@ -1,0 +1,49 @@
+--- a/FalconMindSDK/src/mission/EventReporterNode.cpp
++++ b/FalconMindSDK/src/mission/EventReporterNode.cpp
+@@ -29,6 +29,7 @@
+ #include <unistd.h>
+ #include <netdb.h>
+ #endif
++#include <cstring>
+ 
+ namespace falconmind::sdk::mission {
+ 
+@@ -351,22 +352,6 @@ void EventReporterNode::reportSearchEvent(const SearchEvent& event) {
+     // 写入本地日志
+     writeToLog(json);
+     
+-    // MQTT上报
+-    if (batchMode_) {
+-        std::lock_guard<std::mutex> lock(batchMutex_);
+-        eventBatch_.push_back(json);
+-        if (eventBatch_.size() >= static_cast<size_t>(maxBatchSize_)) {
+-            lock.unlock();
+-            flushBatch();
+-        }
+-    } else {
+-        publishEvent("search/event", json);
+-    }
+-    
+-    // 通过Bus发布
+-    auto msg = std::make_shared<DataMessage>();
+-    msg->data.assign(json.begin(), json.end());
+-    Bus::post("search/event", msg);
+-    
+     // 输出到控制台
+     std::cout << "[EventReporter] Event #" << eventCount_ << ": " 
+               << event.description << std::endl;
+@@ -378,13 +363,6 @@ void EventReporterNode::reportSearchProgress(const SearchProgress& progress) {
+     
+     // 写入本地日志
+     writeToLog(json);
+-    
+-    // MQTT上报
+-    publishEvent("search/progress", json);
+-    
+-    // 通过Bus发布
+-    auto msg = std::make_shared<DataMessage>();
+-    msg->data.assign(json.begin(), json.end());
+-    Bus::post("search/progress", msg);
+     
+     // 定期输出到控制台
+     if (progressCount_ % 10 == 0) {

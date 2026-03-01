@@ -262,3 +262,29 @@ Apache License 2.0
 **FalconMind - 让无人机开发更简单**
 
 **真实飞控连接 · 工程级场景 · 完整工具链**
+
+---
+
+## 项目演进
+
+### 当前版本（推荐）
+
+**FalconMindConsole** - 一体化任务控制台
+- 统一入口：编排、监控、管理一站式
+- 运行时执行：无需生成代码，直接下发执行
+- 生产就绪：完整认证、数据库、Docker部署
+
+```bash
+cd FalconMindConsole
+./start-dev.sh
+```
+
+### 历史版本（已归档）
+
+早期原型工具已归档到 `archive/legacy-tools/`：
+
+- **FalconMindBuilder** - 可视化代码生成器（生成C++工程）
+- **FalconMindViewer** - 单机监控查看器（Cesium显示）
+
+这些工具的功能已完全整合到 FalconMindConsole，归档保留用于历史参考。
+

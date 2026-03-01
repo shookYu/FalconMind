@@ -1,0 +1,4 @@
+<map id="falconmind::sdk::high_level::MissionProgress" name="falconmind::sdk::high_level::MissionProgress">
+<area shape="rect" id="node1" title="任务进度回调数据" alt="" coords="5,109,180,151"/>
+<area shape="rect" id="node2" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="11,5,174,47"/>
+</map>

@@ -1,0 +1,13 @@
+<map id="include/falconmind/sdk/high_level/MavlinkClient.h" name="include/falconmind/sdk/high_level/MavlinkClient.h">
+<area shape="rect" id="node1" title="High&#45;level MAVLink client API." alt="" coords="350,5,577,47"/>
+<area shape="rect" id="node2" href="$Result_8h.html" title="Result type for error handling." alt="" coords="203,95,358,136"/>
+<area shape="rect" id="node3" href="$ErrorCode_8h.html" title="Unified error code system for FalconMind SDK." alt="" coords="10,184,109,211"/>
+<area shape="rect" id="node4" title=" " alt="" coords="299,259,358,285"/>
+<area shape="rect" id="node7" title=" " alt="" coords="375,184,453,211"/>
+<area shape="rect" id="node9" href="$FlightTypes_8h_source.html" title=" " alt="" coords="528,95,687,136"/>
+<area shape="rect" id="node11" title=" " alt="" coords="711,102,797,129"/>
+<area shape="rect" id="node6" title=" " alt="" coords="184,184,252,211"/>
+<area shape="rect" id="node8" title=" " alt="" coords="277,184,351,211"/>
+<area shape="rect" id="node5" title=" " alt="" coords="5,259,113,285"/>
+<area shape="rect" id="node10" title=" " alt="" coords="579,184,641,211"/>
+</map>

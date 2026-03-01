@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <chrono>
 
 namespace falconmind::sdk::perception {
 
@@ -23,6 +24,24 @@ struct TrackingState {
     std::vector<TrackHistoryPoint> trajectory;
 };
 
+// 单个跟踪目标
+struct Track {
+    int id{-1};                    ///< 跟踪ID
+    int trackId{-1};               ///< 跟踪ID（与id相同，兼容性）
+    int classId{-1};               ///< 类别ID
+    std::string className;         ///< 类别名称
+    float confidence{0.0f};        ///< 置信度
+    DetectionBBox bbox;            ///< 当前边界框
+    DetectionBBox lastBbox;        ///< 上一次边界框（用于运动预测）
+    std::vector<TrackHistoryPoint> trajectory;  ///< 轨迹历史
+    std::chrono::steady_clock::time_point firstSeen;
+    std::chrono::steady_clock::time_point lastSeen;
+    bool isActive{true};
+    int lostCount{0};              ///< 连续丢失帧数
+    int lostFrames{0};             ///< 连续丢失帧数（与lostCount相同，兼容性）
+    int hits{0};                   ///< 总命中次数
+};
+
 // 跟踪结果（可与 DetectionResult 搭配使用）
 struct TrackingResult {
     std::string frameId;
@@ -32,4 +51,3 @@ struct TrackingResult {
 };
 
 } // namespace falconmind::sdk::perception
-

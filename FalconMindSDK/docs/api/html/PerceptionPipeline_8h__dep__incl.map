@@ -1,0 +1,9 @@
+<map id="include/falconmind/sdk/high_level/PerceptionPipeline.h" name="include/falconmind/sdk/high_level/PerceptionPipeline.h">
+<area shape="rect" id="node1" title="High&#45;level perception pipeline API." alt="" coords="512,5,705,61"/>
+<area shape="rect" id="node2" href="$SearchMission_8h.html" title="搜索任务专用模板" alt="" coords="5,117,236,158"/>
+<area shape="rect" id="node3" href="$SurveillanceMission_8h.html" title="监控/安防巡逻任务模板" alt="" coords="260,109,464,165"/>
+<area shape="rect" id="node4" href="$TrackingMission_8h.html" title="目标跟踪任务模板" alt="" coords="489,117,729,158"/>
+<area shape="rect" id="node5" href="$FalconMindROS2Node_8h.html" title="ROS2 桥接节点" alt="" coords="753,117,992,158"/>
+<area shape="rect" id="node7" href="$PerceptionPipeline_8cpp.html" title="Implementation of high&#45;level perception pipeline API." alt="" coords="1016,117,1201,158"/>
+<area shape="rect" id="node6" href="$FalconMindROS2Node_8cpp.html" title="ROS2 bridge implementation." alt="" coords="749,213,996,240"/>
+</map>

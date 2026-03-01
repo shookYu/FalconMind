@@ -3,12 +3,15 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <fcntl.h>
 #include <unistd.h>
 
 #include <cstring>
 #include <iostream>
-
+#include <thread>
+#include <vector>
+#include <tuple>
 namespace falconmind::sdk::flight {
 
 FlightConnectionService::FlightConnectionService() = default;
@@ -396,6 +399,404 @@ std::uint16_t FlightConnectionService::mavlinkCrcCalculate(const std::uint8_t* b
     }
     crc = mavlinkCrcAccumulate(crcExtra, crc);
     return crc;
+}
+
+// ==================== 任务上传功能实现 ====================
+
+bool FlightConnectionService::uploadMission(
+    const std::vector<std::tuple<double, double, double>>& waypoints) {
+    if (!connected_ || sock_ < 0) {
+        std::cerr << "[FlightConnectionService] uploadMission: not connected" << std::endl;
+        return false;
+    }
+
+    if (waypoints.empty()) {
+        std::cerr << "[FlightConnectionService] uploadMission: empty waypoint list" << std::endl;
+        return false;
+    }
+
+    const uint16_t totalCount = static_cast<uint16_t>(waypoints.size());
+    std::cout << "[FlightConnectionService] 开始上传 " << totalCount << " 个航点..." << std::endl;
+
+    // 步骤1: 清除现有任务
+    if (!clearMission()) {
+        std::cerr << "[FlightConnectionService] 清除现有任务失败" << std::endl;
+        return false;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // 步骤2: 发送MISSION_COUNT
+    std::string countMsg;
+    if (!encodeMissionCount(totalCount, countMsg)) {
+        std::cerr << "[FlightConnectionService] 编码MISSION_COUNT失败" << std::endl;
+        return false;
+    }
+
+    // 发送MISSION_COUNT并等待MISSION_REQUEST
+    bool countSent = false;
+    int retryCount = 0;
+    const int maxRetries = 5;
+    
+    while (!countSent && retryCount < maxRetries) {
+        // 发送COUNT
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(static_cast<uint16_t>(cfg_.remotePort));
+        ::inet_pton(AF_INET, cfg_.remoteAddress.c_str(), &addr.sin_addr);
+        
+        auto ret = ::sendto(sock_, countMsg.data(), countMsg.size(), 0,
+                            reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        if (ret < 0) {
+            std::perror("[FlightConnectionService] sendto MISSION_COUNT");
+            return false;
+        }
+        
+        std::cout << "[FlightConnectionService] 发送MISSION_COUNT: " << totalCount << std::endl;
+        
+        // 等待MISSION_REQUEST或MISSION_ACK
+        auto start = std::chrono::steady_clock::now();
+        while (std::chrono::duration_cast<std::chrono::seconds>(
+                  std::chrono::steady_clock::now() - start).count() < 2) {
+            int msgId = receiveMessage(100);
+            if (msgId == 40) { // MISSION_REQUEST
+                countSent = true;
+                break;
+            } else if (msgId == 47) { // MISSION_ACK
+                std::cout << "[FlightConnectionService] 收到MISSION_ACK, 任务已清除或完成" << std::endl;
+                countSent = true;
+                break;
+            }
+        }
+        
+        if (!countSent) {
+            retryCount++;
+            std::cout << "[FlightConnectionService] 未收到MISSION_REQUEST, 重试(" << retryCount << "/" << maxRetries << ")" << std::endl;
+        }
+    }
+
+    if (!countSent) {
+        std::cerr << "[FlightConnectionService] 发送MISSION_COUNT失败, 未收到响应" << std::endl;
+        return false;
+    }
+
+    // 步骤3: 逐个发送MISSION_ITEM_INT
+    uint16_t currentSeq = 0;
+    while (currentSeq < totalCount) {
+        // 发送当前航点
+        const auto& wp = waypoints[currentSeq];
+        double lat = std::get<0>(wp);
+        double lon = std::get<1>(wp);
+        double alt = std::get<2>(wp);
+        
+        std::string itemMsg;
+        if (!encodeMissionItemInt(currentSeq, totalCount, lat, lon, static_cast<float>(alt), itemMsg)) {
+            std::cerr << "[FlightConnectionService] 编码MISSION_ITEM_INT失败, seq=" << currentSeq << std::endl;
+            return false;
+        }
+        
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(static_cast<uint16_t>(cfg_.remotePort));
+        ::inet_pton(AF_INET, cfg_.remoteAddress.c_str(), &addr.sin_addr);
+        
+        auto ret = ::sendto(sock_, itemMsg.data(), itemMsg.size(), 0,
+                            reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        if (ret < 0) {
+            std::perror("[FlightConnectionService] sendto MISSION_ITEM_INT");
+            return false;
+        }
+        
+        if (currentSeq % 5 == 0 || currentSeq == totalCount - 1) {
+            std::cout << "[FlightConnectionService] 发送航点 " << (currentSeq + 1) << "/" << totalCount << std::endl;
+        }
+        
+        // 等待下一个MISSION_REQUEST或MISSION_ACK
+        bool itemAcked = false;
+        auto start = std::chrono::steady_clock::now();
+        while (std::chrono::duration_cast<std::chrono::seconds>(
+                  std::chrono::steady_clock::now() - start).count() < 3) {
+            int msgId = receiveMessage(100);
+            if (msgId == 40) { // MISSION_REQUEST
+                // 解析请求的序列号
+                // 这里简化处理,假设按顺序请求
+                itemAcked = true;
+                currentSeq++;
+                break;
+            } else if (msgId == 47) { // MISSION_ACK
+                std::cout << "[FlightConnectionService] 收到MISSION_ACK, 任务上传完成" << std::endl;
+                itemAcked = true;
+                currentSeq = totalCount; // 结束循环
+                break;
+            }
+        }
+        
+        if (!itemAcked) {
+            // 超时,重试当前航点
+            std::cout << "[FlightConnectionService] 航点 " << currentSeq << " 超时,重试..." << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+
+    std::cout << "[FlightConnectionService] 任务上传完成: " << totalCount << " 个航点" << std::endl;
+    return true;
+}
+
+bool FlightConnectionService::clearMission() {
+    if (!connected_ || sock_ < 0) {
+        std::cerr << "[FlightConnectionService] clearMission: not connected" << std::endl;
+        return false;
+    }
+
+    std::string clearMsg;
+    if (!encodeMissionClearAll(clearMsg)) {
+        std::cerr << "[FlightConnectionService] 编码MISSION_CLEAR_ALL失败" << std::endl;
+        return false;
+    }
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(static_cast<uint16_t>(cfg_.remotePort));
+    ::inet_pton(AF_INET, cfg_.remoteAddress.c_str(), &addr.sin_addr);
+
+    auto ret = ::sendto(sock_, clearMsg.data(), clearMsg.size(), 0,
+                        reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    if (ret < 0) {
+        std::perror("[FlightConnectionService] sendto MISSION_CLEAR_ALL");
+        return false;
+    }
+
+    std::cout << "[FlightConnectionService] 发送MISSION_CLEAR_ALL" << std::endl;
+    
+    // 等待MISSION_ACK
+    auto start = std::chrono::steady_clock::now();
+    while (std::chrono::duration_cast<std::chrono::seconds>(
+              std::chrono::steady_clock::now() - start).count() < 2) {
+        int msgId = receiveMessage(100);
+        if (msgId == 47) { // MISSION_ACK
+            std::cout << "[FlightConnectionService] 收到MISSION_ACK, 任务已清除" << std::endl;
+            return true;
+        }
+    }
+
+    // 即使没有收到ACK也返回true,因为命令已发送
+    return true;
+}
+
+int FlightConnectionService::receiveMessage(int timeoutMs) {
+    if (!connected_ || sock_ < 0) {
+        return -1;
+    }
+
+    // 使用poll等待数据
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(sock_, &readfds);
+
+    timeval tv;
+    tv.tv_sec = timeoutMs / 1000;
+    tv.tv_usec = (timeoutMs % 1000) * 1000;
+
+    int ready = ::select(sock_ + 1, &readfds, nullptr, nullptr, &tv);
+    if (ready <= 0) {
+        return -1; // 超时或无数据
+    }
+
+    std::lock_guard<std::mutex> lk(receiveMutex_);
+    
+    receiveBuffer_.resize(1024);
+    ssize_t n = ::recv(sock_, receiveBuffer_.data(), receiveBuffer_.size(), 0);
+    if (n <= 0) {
+        return -1;
+    }
+
+    receiveBuffer_.resize(static_cast<size_t>(n));
+
+    // 解析MAVLink帧
+    if (n < 10) {
+        return -1;
+    }
+
+    uint8_t stx = receiveBuffer_[0];
+    if (stx != 0xFE && stx != 0xFD) {
+        return -1;
+    }
+
+    uint8_t msgId = 0;
+    if (stx == 0xFE) {
+        // MAVLink v1
+        msgId = receiveBuffer_[5];
+    } else {
+        // MAVLink v2
+        msgId = receiveBuffer_[7];
+    }
+
+    lastReceivedMsgId_ = msgId;
+    return static_cast<int>(msgId);
+}
+
+bool FlightConnectionService::encodeMissionItemInt(uint16_t seq, uint16_t total, 
+    double lat, double lon, float alt, std::string& out) {
+    // MISSION_ITEM_INT (msgid 73)
+    constexpr uint8_t LEN = 37;
+    constexpr uint8_t MSG_ID = 73;
+    constexpr uint8_t CRC_EXTRA = 38;
+
+    const uint8_t sysid = 255;   // GCS
+    const uint8_t compid = 190;  // MISSION_PLANNER
+
+    // Payload: MISSION_ITEM_INT
+    // uint16_t target_system
+    // uint16_t target_component
+    // uint16_t seq
+    // uint8_t frame
+    // uint16_t command
+    // uint8_t current
+    // uint8_t autocontinue
+    // float param1, param2, param3, param4
+    // int32_t x (lat * 1e7)
+    // int32_t y (lon * 1e7)
+    // float z (alt)
+    // uint8_t mission_type
+    uint8_t payload[LEN] = {};
+    size_t offset = 0;
+
+    // target_system, target_component (uint16)
+    payload[offset++] = 1; payload[offset++] = 0;  // target_system = 1
+    payload[offset++] = 1; payload[offset++] = 0;  // target_component = 1
+
+    // seq (uint16)
+    payload[offset++] = static_cast<uint8_t>(seq & 0xFF);
+    payload[offset++] = static_cast<uint8_t>((seq >> 8) & 0xFF);
+
+    // frame (uint8) - MAV_FRAME_GLOBAL_RELATIVE_ALT = 3
+    payload[offset++] = 3;
+
+    // command (uint16) - MAV_CMD_NAV_WAYPOINT = 16
+    payload[offset++] = 16; payload[offset++] = 0;
+
+    // current (uint8) - 1 if this is the current waypoint
+    payload[offset++] = (seq == 0) ? 1 : 0;
+
+    // autocontinue (uint8)
+    payload[offset++] = 1;
+
+    // param1-4 (float) - hold time, acceptance radius, pass radius, yaw
+    float holdTime = 0.0f, acceptRadius = 3.0f, passRadius = 0.0f, yaw = 0.0f;
+    auto putFloat = [&](float v) {
+        uint8_t* p = reinterpret_cast<uint8_t*>(&v);
+        payload[offset++] = p[0];
+        payload[offset++] = p[1];
+        payload[offset++] = p[2];
+        payload[offset++] = p[3];
+    };
+    putFloat(holdTime);
+    putFloat(acceptRadius);
+    putFloat(passRadius);
+    putFloat(yaw);
+
+    // x (int32) - latitude * 1e7
+    int32_t latInt = static_cast<int32_t>(lat * 1e7);
+    uint8_t* p = reinterpret_cast<uint8_t*>(&latInt);
+    payload[offset++] = p[0]; payload[offset++] = p[1];
+    payload[offset++] = p[2]; payload[offset++] = p[3];
+
+    // y (int32) - longitude * 1e7
+    int32_t lonInt = static_cast<int32_t>(lon * 1e7);
+    p = reinterpret_cast<uint8_t*>(&lonInt);
+    payload[offset++] = p[0]; payload[offset++] = p[1];
+    payload[offset++] = p[2]; payload[offset++] = p[3];
+
+    // z (float) - altitude
+    putFloat(alt);
+
+    // mission_type (uint8)
+    payload[offset++] = 0; // MAV_MISSION_TYPE_MISSION
+
+    // CRC
+    uint16_t crc = mavlinkCrcCalculate(payload, LEN, CRC_EXTRA);
+
+    // Build frame (MAVLink v1)
+    constexpr uint8_t STX_V1 = 0xFE;
+    uint8_t frame[6 + LEN + 2];
+    frame[0] = STX_V1;
+    frame[1] = LEN;
+    frame[2] = seq_++;
+    frame[3] = sysid;
+    frame[4] = compid;
+    frame[5] = MSG_ID;
+    memcpy(&frame[6], payload, LEN);
+    frame[6 + LEN] = static_cast<uint8_t>(crc & 0xFF);
+    frame[6 + LEN + 1] = static_cast<uint8_t>((crc >> 8) & 0xFF);
+
+    out.assign(reinterpret_cast<char*>(frame), sizeof(frame));
+    return true;
+}
+
+bool FlightConnectionService::encodeMissionCount(uint16_t count, std::string& out) {
+    // MISSION_COUNT (msgid 44)
+    constexpr uint8_t LEN = 4;
+    constexpr uint8_t MSG_ID = 44;
+    constexpr uint8_t CRC_EXTRA = 189;
+
+    const uint8_t sysid = 255;
+    const uint8_t compid = 190;
+
+    // Payload:
+    // uint16_t target_system
+    // uint16_t count
+    uint8_t payload[LEN] = {};
+    payload[0] = 1; payload[1] = 0;  // target_system = 1
+    payload[2] = static_cast<uint8_t>(count & 0xFF);
+    payload[3] = static_cast<uint8_t>((count >> 8) & 0xFF);
+
+    uint16_t crc = mavlinkCrcCalculate(payload, LEN, CRC_EXTRA);
+
+    constexpr uint8_t STX_V1 = 0xFE;
+    uint8_t frame[6 + LEN + 2];
+    frame[0] = STX_V1;
+    frame[1] = LEN;
+    frame[2] = seq_++;
+    frame[3] = sysid;
+    frame[4] = compid;
+    frame[5] = MSG_ID;
+    memcpy(&frame[6], payload, LEN);
+    frame[6 + LEN] = static_cast<uint8_t>(crc & 0xFF);
+    frame[6 + LEN + 1] = static_cast<uint8_t>((crc >> 8) & 0xFF);
+
+    out.assign(reinterpret_cast<char*>(frame), sizeof(frame));
+    return true;
+}
+
+bool FlightConnectionService::encodeMissionClearAll(std::string& out) {
+    // MISSION_CLEAR_ALL (msgid 45)
+    constexpr uint8_t LEN = 2;
+    constexpr uint8_t MSG_ID = 45;
+    constexpr uint8_t CRC_EXTRA = 232;
+
+    const uint8_t sysid = 255;
+    const uint8_t compid = 190;
+
+    // Payload:
+    // uint16_t target_system
+    uint8_t payload[LEN] = {};
+    payload[0] = 1; payload[1] = 0;  // target_system = 1
+
+    uint16_t crc = mavlinkCrcCalculate(payload, LEN, CRC_EXTRA);
+
+    constexpr uint8_t STX_V1 = 0xFE;
+    uint8_t frame[6 + LEN + 2];
+    frame[0] = STX_V1;
+    frame[1] = LEN;
+    frame[2] = seq_++;
+    frame[3] = sysid;
+    frame[4] = compid;
+    frame[5] = MSG_ID;
+    memcpy(&frame[6], payload, LEN);
+    frame[6 + LEN] = static_cast<uint8_t>(crc & 0xFF);
+    frame[6 + LEN + 1] = static_cast<uint8_t>((crc >> 8) & 0xFF);
+
+    out.assign(reinterpret_cast<char*>(frame), sizeof(frame));
+    return true;
 }
 
 } // namespace falconmind::sdk::flight

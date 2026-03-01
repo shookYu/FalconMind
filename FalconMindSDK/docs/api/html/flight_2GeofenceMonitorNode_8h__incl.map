@@ -1,0 +1,13 @@
+<map id="include/falconmind/sdk/flight/GeofenceMonitorNode.h" name="include/falconmind/sdk/flight/GeofenceMonitorNode.h">
+<area shape="rect" id="node1" title="地理围栏监控节点" alt="" coords="429,5,631,61"/>
+<area shape="rect" id="node2" href="$Node_8h_source.html" title=" " alt="" coords="103,109,258,151"/>
+<area shape="rect" id="node4" title=" " alt="" coords="266,199,325,225"/>
+<area shape="rect" id="node6" title=" " alt="" coords="440,199,503,225"/>
+<area shape="rect" id="node7" href="$FlightTypes_8h_source.html" title=" " alt="" coords="333,109,492,151"/>
+<area shape="rect" id="node8" href="$SensorTypes_8h_source.html" title=" " alt="" coords="567,109,743,151"/>
+<area shape="rect" id="node10" title=" " alt="" coords="768,117,855,143"/>
+<area shape="rect" id="node11" title=" " alt="" coords="879,117,946,143"/>
+<area shape="rect" id="node3" title=" " alt="" coords="154,199,231,225"/>
+<area shape="rect" id="node5" title=" " alt="" coords="5,199,129,225"/>
+<area shape="rect" id="node9" title=" " alt="" coords="622,199,689,225"/>
+</map>

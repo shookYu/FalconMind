@@ -42,9 +42,12 @@ private:
         IDLE,
         ARMING,
         TAKING_OFF,
-        FLYING_TO_AREA,
+        UPLOADING_MISSION,
+        EXECUTING_MISSION,
         SEARCHING,
         RETURNING,
+        LANDING,
+        DISARMING,
         COMPLETE
     };
 
@@ -53,6 +56,16 @@ private:
     
     // 检查是否到达航点
     bool isWaypointReached(const GeoPoint& waypoint, const GeoPoint& currentPos, double tolerance = 5.0);
+    
+    // MAVLink航点协议
+    bool uploadMissionToPX4(const std::vector<GeoPoint>& waypoints);
+    bool sendMissionCount(int count);
+    bool waitAndSendWaypoint(int seq, const GeoPoint& wp);
+    bool waitForMissionAck();
+    bool startMissionExecution();
+    
+    // 重置任务
+    void reset();
 
     flight::FlightConnectionService& flightSvc_;
     std::shared_ptr<SearchPathPlannerNode> pathPlanner_;
@@ -64,6 +77,13 @@ private:
     int currentWaypointIndex_{0};
     bool armingDone_{false};
     bool takeoffDone_{false};
+    bool waypointsUploaded_{false};
+    
+    // 航点执行
+    uint64_t missionStartTime_{0};
+    uint64_t lastWaypointTime_{0};
+    int waypointRetryCount_{0};
+    int maxWaypointRetries_{3};
 };
 
 } // namespace falconmind::sdk::mission

@@ -1,0 +1,20 @@
+var searchData=
+[
+  ['takephoto_1177',['takePhoto',['../structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html#aba1179067480149d8ba61a4ae52ae79d',1,'falconmind::sdk::high_level::AlertConfig']]],
+  ['targetclass_1178',['targetClass',['../structfalconmind_1_1sdk_1_1high__level_1_1AlertConfig.html#aba03305c2b51871b928b9e8ddae2d030',1,'falconmind::sdk::high_level::AlertConfig::targetClass()'],['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingMissionConfig.html#ac717b13056533b6b64179522c9bcf904',1,'falconmind::sdk::high_level::TrackingMissionConfig::targetClass()']]],
+  ['targetclasses_1179',['targetClasses',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchMissionConfig.html#a5ff2b2d0684e4a690ba6cbcb56db0cef',1,'falconmind::sdk::high_level::SearchMissionConfig']]],
+  ['targetcounts_1180',['targetCounts',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceStats.html#aefd5f51330af49808366b401ff8b84ee',1,'falconmind::sdk::high_level::SurveillanceStats']]],
+  ['targetlocations_1181',['targetLocations',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchResult.html#a3b8384dda73cf04167793954b418edb5',1,'falconmind::sdk::high_level::SearchResult']]],
+  ['targetlostcount_1182',['targetLostCount',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#a1244fa05a7155188da38a2926802a593',1,'falconmind::sdk::high_level::TrackingStats']]],
+  ['targetreacquiredcount_1183',['targetReacquiredCount',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#a84ed7cf4d19ef87b6330292d50f22ce1',1,'falconmind::sdk::high_level::TrackingStats']]],
+  ['targetsdetected_1184',['targetsDetected',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchResult.html#a696ae90a0715e7a42c86b7c01b9d1229',1,'falconmind::sdk::high_level::SearchResult']]],
+  ['targetsfound_1185',['targetsFound',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchProgress.html#a28562ccc93c6f7db2178382723b648f5',1,'falconmind::sdk::high_level::SearchProgress']]],
+  ['targettrackid_1186',['targetTrackId',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingMissionConfig.html#a0ae4ccbe8ae9cc539cd52cc4649d29c7',1,'falconmind::sdk::high_level::TrackingMissionConfig']]],
+  ['totaldistance_1187',['totalDistance',['../structfalconmind_1_1sdk_1_1high__level_1_1SurveillanceStats.html#accc028ef0e14c62317ccc26eae8f55b2',1,'falconmind::sdk::high_level::SurveillanceStats::totalDistance()'],['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#ad3345c7463e0b20a71ea1b95aa742501',1,'falconmind::sdk::high_level::TrackingStats::totalDistance()']]],
+  ['totalfences_1188',['totalFences',['../structfalconmind_1_1sdk_1_1flight_1_1GeofenceStatus.html#a5077a47c87ac6352de47cc8c5882f488',1,'falconmind::sdk::flight::GeofenceStatus']]],
+  ['totaltime_1189',['totalTime',['../structfalconmind_1_1sdk_1_1high__level_1_1SearchResult.html#a2b9a16ebe3e29186cc776566c30f81ac',1,'falconmind::sdk::high_level::SearchResult']]],
+  ['totaltrackingtime_1190',['totalTrackingTime',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#aa66ee1de312b731ba2c7e2b27499762a',1,'falconmind::sdk::high_level::TrackingStats']]],
+  ['totalwaypoints_1191',['totalWaypoints',['../structfalconmind_1_1sdk_1_1high__level_1_1MissionProgress.html#afe5cc1133ed883fc3f31484eee314795',1,'falconmind::sdk::high_level::MissionProgress::totalWaypoints()'],['../structfalconmind_1_1sdk_1_1high__level_1_1SearchProgress.html#a1958fb3230e8ede3eb9dc8f9f675699c',1,'falconmind::sdk::high_level::SearchProgress::totalWaypoints()']]],
+  ['trackid_1192',['trackId',['../structfalconmind_1_1sdk_1_1high__level_1_1TargetInfo.html#af3a3ed7e420974a1b1b86da886e2fa16',1,'falconmind::sdk::high_level::TargetInfo']]],
+  ['trackingaccuracy_1193',['trackingAccuracy',['../structfalconmind_1_1sdk_1_1high__level_1_1TrackingStats.html#a9831d3120c70e6a5b2f6040d212688f1',1,'falconmind::sdk::high_level::TrackingStats']]]
+];

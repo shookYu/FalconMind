@@ -1,0 +1,8 @@
+<map id="falconmind::sdk::perception::TrackRecord" name="falconmind::sdk::perception::TrackRecord">
+<area shape="rect" id="node1" title=" " alt="" coords="953,64,1156,105"/>
+<area shape="rect" id="node2" title=" " alt="" coords="675,17,762,43"/>
+<area shape="rect" id="node3" title=" " alt="" coords="325,5,464,47"/>
+<area shape="rect" id="node4" href="$structfalconmind_1_1sdk_1_1perception_1_1DetectionBBox.html" title=" " alt="" coords="5,93,208,135"/>
+<area shape="rect" id="node6" href="$structfalconmind_1_1sdk_1_1perception_1_1TrackHistoryPoint.html" title=" " alt="" coords="293,124,496,165"/>
+<area shape="rect" id="node5" title=" " alt="" coords="609,122,828,178"/>
+</map>

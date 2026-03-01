@@ -1,0 +1,9 @@
+<map id="falconmind::sdk::high_level::SearchResult" name="falconmind::sdk::high_level::SearchResult">
+<area shape="rect" id="node1" title="搜索结果" alt="" coords="1079,64,1241,105"/>
+<area shape="rect" id="node2" title=" " alt="" coords="713,5,923,47"/>
+<area shape="rect" id="node3" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="405,5,568,47"/>
+<area shape="rect" id="node4" title=" " alt="" coords="711,123,925,164"/>
+<area shape="rect" id="node5" href="$structfalconmind_1_1sdk_1_1high__level_1_1Detection.html" title="Simplified detection result for callbacks." alt="" coords="405,123,568,164"/>
+<area shape="rect" id="node6" title=" " alt="" coords="193,101,280,127"/>
+<area shape="rect" id="node7" title=" " alt="" coords="5,93,144,135"/>
+</map>

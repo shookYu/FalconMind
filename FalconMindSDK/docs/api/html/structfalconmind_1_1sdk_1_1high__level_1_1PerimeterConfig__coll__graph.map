@@ -1,0 +1,7 @@
+<map id="falconmind::sdk::high_level::PerimeterConfig" name="falconmind::sdk::high_level::PerimeterConfig">
+<area shape="rect" id="node1" title="周界配置" alt="" coords="110,213,285,255"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,109,216,151"/>
+<area shape="rect" id="node3" href="$structfalconmind_1_1sdk_1_1high__level_1_1GeoPoint.html" title="地理坐标点（经纬度+高度）" alt="" coords="28,5,191,47"/>
+<area shape="rect" id="node4" title=" " alt="" coords="241,117,327,143"/>
+<area shape="rect" id="node5" title=" " alt="" coords="215,5,353,47"/>
+</map>

@@ -1,0 +1,25 @@
+var structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl =
+[
+    [ "checkGeofences", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#ad714b867dfd1b0c54e1d4927c8ba4001", null ],
+    [ "executeSafetyAction", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a305a36915c42bf43a984f7554a1a4448", null ],
+    [ "consecutiveViolations", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a153e47d658e291b71c1d85a82931449e", null ],
+    [ "currentPosition", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a9a96911511f53aec1656e657c64368b9", null ],
+    [ "hasLastViolation", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#ab54f1769c8d1e352483c7c15101348de", null ],
+    [ "inViolation", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#aaeb6b4a70d40b461b65300dbe339efae", null ],
+    [ "isMonitoring", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a41e58da54f336b11b42488dc1f7ffc6f", null ],
+    [ "isRunning", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a100a1a04d07f20b9c7152321479a304a", null ],
+    [ "keepInZones", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a36b1b3fa300da0f25e1e0f74a2db33db", null ],
+    [ "keepOutZones", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#ab1123c0b58a8625ddf3cc41bf694679c", null ],
+    [ "lastViolation", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a31da23db9db911a4d20a5de8059ab144", null ],
+    [ "lastViolationFence", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a5f8db07b02a3a8aa96e752ce9b7d0b30", null ],
+    [ "monitorRate", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a4f4c78ff375c98e941ddabd87ce0e6bc", null ],
+    [ "onApproachingCallback", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a55be52d8fc4a8ca12dd217be5e56082b", null ],
+    [ "onSafetyActionCallback", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#ababe6783618f500f99ec0039c65820af", null ],
+    [ "onStatusChangedCallback", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a56b7227d366938f8f67ed1a72a3260f9", null ],
+    [ "onViolationCallback", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a99ac052916ebbe6e6788391530adc830", null ],
+    [ "totalViolations", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a7ee3db08110b5c7e3572508c766043ca", null ],
+    [ "violationAction", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#af7902a49090fdc6a098f837ba81434c2", null ],
+    [ "violationHistory", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#ae633cdd669a6ab3054a96273be5703b0", null ],
+    [ "violationThreshold", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a62b893a104ecf807c0d7f6f9967adc4c", null ],
+    [ "warningDistance", "structfalconmind_1_1sdk_1_1flight_1_1GeofenceMonitorNode_1_1Impl.html#a2b3987792e9ae3914881648c781d19a3", null ]
+];

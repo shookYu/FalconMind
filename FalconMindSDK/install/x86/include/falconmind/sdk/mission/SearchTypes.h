@@ -36,6 +36,7 @@ struct SearchParams {
     double speed;                   // 飞行速度（m/s）
     double spacing;                 // 搜索线间距（米，用于网格搜索）
     double loiterTime;              // 每个航点悬停时间（秒）
+    double waypointTolerance = 5.0; // 航点到达容差（米）
     bool enableDetection;           // 是否启用目标检测
     std::vector<std::string> detectionClasses; // 关注的检测类别
 };
@@ -54,6 +55,7 @@ enum class SearchEventType {
     INTEREST_POINT,     // 兴趣点
     ANOMALY,            // 异常
     WAYPOINT_REACHED,   // 到达航点
+    WAYPOINT_TIMEOUT,   // 航点超时
     SEARCH_COMPLETE     // 搜索完成
 };
 

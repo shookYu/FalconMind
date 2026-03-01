@@ -1,0 +1,4 @@
+<map id="falconmind::sdk::flight::GeofenceMonitorNode" name="falconmind::sdk::flight::GeofenceMonitorNode">
+<area shape="rect" id="node1" title="地理围栏监控节点" alt="" coords="5,95,181,136"/>
+<area shape="rect" id="node2" href="$classfalconmind_1_1sdk_1_1core_1_1Node.html" title=" " alt="" coords="12,5,175,47"/>
+</map>

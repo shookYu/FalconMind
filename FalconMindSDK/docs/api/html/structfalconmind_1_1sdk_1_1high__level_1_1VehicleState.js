@@ -1,0 +1,26 @@
+var structfalconmind_1_1sdk_1_1high__level_1_1VehicleState =
+[
+    [ "altitude", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a17e98b3e9401c883dcda6535ccb5c382", null ],
+    [ "ax", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a549860154fb5cb4ddb2de111cdc839c4", null ],
+    [ "ay", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a4f87023ed97c92d6187cb6d380302a8f", null ],
+    [ "az", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#ae5fc7d9a84ab4c349c37ff4dae9704f8", null ],
+    [ "batteryPercent", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#af1400ddaa87f40036459c3e79b6746d7", null ],
+    [ "flightMode", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a1ccb99d5a6fa968b8df527d687cbf676", null ],
+    [ "gpsFixType", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a1a99e8adfb8287c548f6e15d2d54702c", null ],
+    [ "gx", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a6c619fc0d135434620bf242f76134ca7", null ],
+    [ "gy", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a4c4f8cc293c4eea0d59a82747cf0b887", null ],
+    [ "gz", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a2b0646848305a188ef3470608f2be1fb", null ],
+    [ "hdop", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#aaf73194db758e9cc6f9f3edfc032ec35", null ],
+    [ "isArmed", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a402884da15e52b1d96e486b62951a03f", null ],
+    [ "latitude", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a75411e239213a0b39cf3fd804dee8f11", null ],
+    [ "longitude", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#ac30667f43d155bafe94c0d9355f0dfe1", null ],
+    [ "pitch", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#ab0afa02ee0f6fc6fff9f88e8bf63ea71", null ],
+    [ "relativeAlt", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a77e7eb01e03381b96c6c0d1f3f129b60", null ],
+    [ "roll", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a812335a78916ac644d9d292fe8b3d5fa", null ],
+    [ "satellites", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#aa7a7529af2ad49c25fef60156f824542", null ],
+    [ "timestampMs", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a57c823ad377ae48308c3b3968832b194", null ],
+    [ "vx", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#aeccd7af843e05f395e65e1726b4d2da9", null ],
+    [ "vy", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a6de8aa454d97aa5988a01743dcffcd5a", null ],
+    [ "vz", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#a166980bc694739fe12a2236bba9e67be", null ],
+    [ "yaw", "structfalconmind_1_1sdk_1_1high__level_1_1VehicleState.html#ab37ed89b8453adc52c440d14f300fc09", null ]
+];

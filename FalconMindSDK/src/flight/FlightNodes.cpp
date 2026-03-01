@@ -3,8 +3,9 @@
 #include "falconmind/sdk/telemetry/TelemetryPublisher.h"
 
 #include <iostream>
+#include <memory>
 #include <chrono>
-
+#include <unordered_map>
 namespace falconmind::sdk::flight {
 
 using namespace falconmind::sdk::core;

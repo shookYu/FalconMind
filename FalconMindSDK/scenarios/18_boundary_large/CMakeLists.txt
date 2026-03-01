@@ -1,53 +1,44 @@
-# 场景 CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
-project(FalconMindScenario)
+project(scenario_18_boundary_large)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找 FalconMindSDK
-find_package(FalconMindSDK QUIET)
-if(NOT FalconMindSDK_FOUND)
-    # 使用相对路径
-    set(FALCONMINDSDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../")
-    set(FALCONMINDSDK_INCLUDE_DIR "${FALCONMINDSDK_ROOT}/include")
-    set(FALCONMINDSDK_LIB_DIR "${FALCONMINDSDK_ROOT}/install/x86/lib")
-endif()
+set(FALCONMINDSDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+set(FALCONMINDSDK_INCLUDE_DIR "${FALCONMINDSDK_ROOT}/include")
+set(FALCONMINDSDK_LIB_DIR "${FALCONMINDSDK_ROOT}/install/x86/lib")
 
-# 查找依赖
 find_package(Threads REQUIRED)
 
-# 创建可执行文件
-get_filename_component(SCENARIO_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-set(TARGET_NAME "scenario_${SCENARIO_NAME}")
+file(GLOB SOURCES "*.cpp")
 
-add_executable(${TARGET_NAME}
-    main.cpp
-)
+# 包含common目录下的RealScenarioBase.cpp
+list(APPEND SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../common/RealScenarioBase.cpp")
 
-target_include_directories(${TARGET_NAME} PRIVATE
+add_executable(scenario_18_boundary_large ${SOURCES})
+
+target_include_directories(scenario_18_boundary_large PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${FALCONMINDSDK_INCLUDE_DIR}
-    /usr/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common
 )
 
-target_link_directories(${TARGET_NAME} PRIVATE
+target_link_directories(scenario_18_boundary_large PRIVATE
     ${FALCONMINDSDK_LIB_DIR}
 )
 
-target_link_libraries(${TARGET_NAME} PRIVATE
+target_link_libraries(scenario_18_boundary_large PRIVATE
     falconmind_sdk
     Threads::Threads
     dl
 )
 
-# 编译选项
-target_compile_options(${TARGET_NAME} PRIVATE
+target_compile_options(scenario_18_boundary_large PRIVATE
     -Wall
     -Wextra
     -O2
 )
 
-# 安装规则
-install(TARGETS ${TARGET_NAME}
+install(TARGETS scenario_18_boundary_large
     RUNTIME DESTINATION bin
 )

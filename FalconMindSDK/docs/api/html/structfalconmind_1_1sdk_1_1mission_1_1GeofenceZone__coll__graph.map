@@ -1,0 +1,7 @@
+<map id="falconmind::sdk::mission::GeofenceZone" name="falconmind::sdk::mission::GeofenceZone">
+<area shape="rect" id="node1" title=" " alt="" coords="70,213,255,255"/>
+<area shape="rect" id="node2" title=" " alt="" coords="37,117,123,143"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,5,144,47"/>
+<area shape="rect" id="node4" title=" " alt="" coords="159,109,353,151"/>
+<area shape="rect" id="node5" href="$structfalconmind_1_1sdk_1_1mission_1_1GeoPoint.html" title=" " alt="" coords="169,5,354,47"/>
+</map>

@@ -1,0 +1,23 @@
+<map id="include/falconmind/sdk/high_level/SearchMission.h" name="include/falconmind/sdk/high_level/SearchMission.h">
+<area shape="rect" id="node1" title="搜索任务专用模板" alt="" coords="670,5,901,47"/>
+<area shape="rect" id="node2" href="$MissionPipeline_8h.html" title="任务执行流水线模板" alt="" coords="528,95,664,121"/>
+<area shape="rect" id="node5" title=" " alt="" coords="533,348,592,375"/>
+<area shape="rect" id="node13" title=" " alt="" coords="1349,348,1411,375"/>
+<area shape="rect" id="node18" href="$PerceptionPipeline_8h.html" title="High&#45;level perception pipeline API." alt="" coords="948,95,1103,121"/>
+<area shape="rect" id="node3" href="$Result_8h.html" title="Result type for error handling." alt="" coords="643,177,717,203"/>
+<area shape="rect" id="node4" href="$ErrorCode_8h.html" title="Unified error code system for FalconMind SDK." alt="" coords="24,266,123,293"/>
+<area shape="rect" id="node8" title=" " alt="" coords="876,266,953,293"/>
+<area shape="rect" id="node10" href="$Pipeline_8h_source.html" title=" " alt="" coords="1005,169,1160,211"/>
+<area shape="rect" id="node14" href="$FlightTypes_8h_source.html" title=" " alt="" coords="399,259,558,300"/>
+<area shape="rect" id="node15" href="$SearchTypes_8h_source.html" title=" " alt="" coords="198,259,375,300"/>
+<area shape="rect" id="node16" title=" " alt="" coords="793,177,879,203"/>
+<area shape="rect" id="node17" title=" " alt="" coords="92,177,159,203"/>
+<area shape="rect" id="node7" title=" " alt="" coords="685,266,753,293"/>
+<area shape="rect" id="node9" title=" " alt="" coords="777,266,852,293"/>
+<area shape="rect" id="node6" title=" " alt="" coords="19,348,127,375"/>
+<area shape="rect" id="node11" title=" " alt="" coords="1029,266,1153,293"/>
+<area shape="rect" id="node12" title=" " alt="" coords="1177,266,1292,293"/>
+<area shape="rect" id="node19" href="$DetectionTypes_8h_source.html" title=" " alt="" coords="1569,259,1764,300"/>
+<area shape="rect" id="node21" href="$TrackingTypes_8h_source.html" title=" " alt="" coords="1468,169,1663,211"/>
+<area shape="rect" id="node20" title=" " alt="" coords="1633,348,1700,375"/>
+</map>
