@@ -27,7 +27,13 @@ if(FALCONMINDSDK_BUILD_TESTS)
     endif()
 endif()
 
-# 推理后端：默认 OFF，无 GPU/NPU 时可正常编译；开启后需自行安装对应库并实现 load/run
+# 推理后端：仅支持 RKNN（RK3588/RK3576/RV1126B 平台）
+option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with RKNN inference backend (requires RKNN-Toolkit2/board lib)" ON)
+option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
+
+# 设置第三方依赖库安装目录
+option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with RKNN inference backend (requires RKNN-Toolkit2/board lib)" ON)
+option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
 option(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND "Build with real ONNXRuntime inference backend (requires ONNXRuntime)" OFF)
 option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with real RKNN inference backend (requires RKNN-Toolkit2/board lib)" OFF)
 option(FALCONMINDSDK_BUILD_TENSORRT_BACKEND "Build with real TensorRT inference backend (requires TensorRT+CUDA)" OFF)
@@ -109,6 +115,9 @@ add_library(falconmind_sdk
     src/sensors/GnssSourceNode.cpp
     src/perception/DummyDetectionNode.cpp
     src/perception/TrackingTransformNode.cpp
+    src/perception/PerceptionPluginManager.cpp
+    src/perception/RknnDetectorBackend.cpp
+    src/perception/EnvironmentDetectionNode.cpp
     src/perception/PerceptionPluginManager.cpp
     src/perception/OnnxRuntimeDetectorBackend.cpp
     src/perception/RknnDetectorBackend.cpp
@@ -198,35 +207,7 @@ if(httplib_FOUND)
         target_compile_definitions(falconmind_sdk PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
     endif()
 endif()
-
-# 可选推理后端：ONNXRuntime — 选项 ON 时尝试查找并链接，未找到则 WARNING 且不定义宏（保持 stub）
-if(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND)
-    set(ONNXRUNTIME_ROOT "$ENV{ONNXRUNTIME_ROOT}" CACHE PATH "ONNXRuntime install root (include/ and lib/)")
-    if(ONNXRUNTIME_ROOT)
-        set(ONNXRUNTIME_SEARCH_PATHS "${ONNXRUNTIME_ROOT}")
-    else()
-        set(ONNXRUNTIME_SEARCH_PATHS "/usr/local" "/opt/onnxruntime")
-    endif()
-    find_path(ONNXRUNTIME_INCLUDE_DIR
-        NAMES onnxruntime_cxx_api.h
-        PATH_SUFFIXES include
-        PATHS ${ONNXRUNTIME_SEARCH_PATHS}
-    )
-    find_library(ONNXRUNTIME_LIBRARY
-        NAMES onnxruntime
-        PATH_SUFFIXES lib lib64
-        PATHS ${ONNXRUNTIME_SEARCH_PATHS}
-    )
-    if(ONNXRUNTIME_INCLUDE_DIR AND ONNXRUNTIME_LIBRARY)
-        target_include_directories(falconmind_sdk PRIVATE "${ONNXRUNTIME_INCLUDE_DIR}")
-        target_link_libraries(falconmind_sdk PRIVATE "${ONNXRUNTIME_LIBRARY}")
-        target_compile_definitions(falconmind_sdk PRIVATE FALCONMINDSDK_ONNXRUNTIME_BACKEND_ENABLED=1)
-        message(STATUS "FalconMindSDK: ONNXRuntime backend enabled and linked: ${ONNXRUNTIME_LIBRARY}")
-    else()
-        message(WARNING "ONNXRuntime not found (set ONNXRUNTIME_ROOT or install to /usr/local). OnnxRuntimeDetectorBackend will remain stub.")
-    endif()
-endif()
-# 主平台推理后端：RKNN（RK1126B/RK3576/RK3588）。选项 ON 时尝试查找并链接，未找到则 WARNING 且不定义宏（保持 stub）
+# RKNN 推理后端配置（RK3588/RK3576/RV1126B 平台）
 if(FALCONMINDSDK_BUILD_RKNN_BACKEND)
     set(RKNN_SDK_ROOT "$ENV{RKNN_SDK_ROOT}" CACHE PATH "RKNN SDK root (include/ with rknn_api.h, lib/ or runtime/.../ with librknnrt.so)")
     if(RKNN_SDK_ROOT)
@@ -252,12 +233,6 @@ if(FALCONMINDSDK_BUILD_RKNN_BACKEND)
     else()
         message(WARNING "RKNN not found (set RKNN_SDK_ROOT to SDK root with include/rknn_api.h and librknnrt.so). RknnDetectorBackend will remain stub.")
     endif()
-endif()
-if(FALCONMINDSDK_BUILD_TENSORRT_BACKEND)
-    # find_package(TensorRT REQUIRED) 等
-    target_sources(falconmind_sdk PRIVATE src/perception/TensorRtDetectorBackend.cpp)
-    target_compile_definitions(falconmind_sdk PRIVATE FALCONMINDSDK_TENSORRT_BACKEND_ENABLED=1)
-    message(STATUS "FalconMindSDK: TensorRT backend enabled (ensure TensorRT is linked)")
 endif()
 
 if(FALCONMINDSDK_BUILD_TESTS)

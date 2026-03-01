@@ -2,7 +2,7 @@
 
 FalconMindConsole - 无人机智能任务统一控制台
 
-> 整合 FalconMindBuilder + FalconMindViewer，提供一站式任务编排、部署与监控能力
+> 一站式任务编排、集群管理与实时监控平台
 
 ---
 
@@ -11,7 +11,8 @@ FalconMindConsole - 无人机智能任务统一控制台
 ### 架构设计
 - [系统架构设计（概述版）](docs/architecture/system-architecture-overview.md) - 总体架构设计
 - [系统架构设计（基于代码分析）](docs/architecture/system-architecture-code-based.md) - 基于实际代码的详细架构
-- [整合架构设计](docs/architecture/integration-architecture.md) - Builder+Viewer整合方案
+- [离线自治架构设计](docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md) ⭐ **NEW** - UAV断网自治系统 (P0/P1/P2 全部完成)
+- [整合架构设计](docs/architecture/integration-architecture.md) - 架构整合方案
 - [详细设计文档](docs/architecture/system-design-v1.md) - 完整的数据库、API、组件设计
 
 ### API文档
@@ -127,14 +128,36 @@ FalconMindConsole/
 - MQTT / WebSocket
 
 ### 边缘
-- NodeAgent (C++)
-- FalconMindSDK
+- **NodeAgent (C++)** ⭐ **离线自治系统**
+  - GCS失联检测与处理 (P0)
+  - 机组协同与Leader选举 (P1)
+  - 分布式任务分配 (P2)
+  - 15,000+ 行代码，250+ 测试用例
+  - Docker + Systemd 双部署
 
 ---
 
 ## 📅 开发计划
 
 详见 [TODO.md](TODO.md) 和 [详细设计文档](docs/architecture/system-design-v1.md#九实施计划)
+
+### ✅ 已完成功能
+
+**NodeAgent 离线自治系统** (100% 完成)
+- ✅ P0: GCS失联处理、单机自治、本地存储、重连同步
+- ✅ P1: 机组失联处理、Leader选举、分区检测合并
+- ✅ P2: 分布式任务分配、跨区冲突解决、预测性重连
+- ✅ Docker + Systemd 部署配置
+- ✅ 250+ 测试用例，性能基准测试
+
+**Console 核心功能**
+- ✅ 任务编排与流程设计
+- ✅ UAV 管理与集群控制
+- ✅ 实时遥测监控
+- ✅ 集群任务管理（Voronoi分割、负载均衡）
+- ✅ 冲突检测与解决
+
+### 🚧 进行中
 
 **Phase 1** (Week 1-2): 基础搭建 ⏳  
 **Phase 2** (Week 3-6): 后端核心 ⏳  

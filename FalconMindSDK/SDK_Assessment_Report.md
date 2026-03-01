@@ -69,6 +69,10 @@ MAVSDK:         ☆
 - **拒止环境导航**: Visual SLAM (VINS-Fusion) + LiDAR SLAM
 - **行为树框架**: 完整的BehaviorTree实现（Sequence/Selector/Parallel/Decorators）
 - **完整工具链**: 
+  - FalconMindConsole 统一控制台（任务编排、集群管理、实时监控）
+  - ~~FalconMindBuilder可视化编排~~（已整合到Console）
+  - ~~FalconMindViewer实时监控~~（已整合到Console）
+  - ~~ClusterCenter集群管理~~（已整合到Console）
   - FalconMindBuilder可视化编排
   - FalconMindViewer实时监控
   - ClusterCenter集群管理

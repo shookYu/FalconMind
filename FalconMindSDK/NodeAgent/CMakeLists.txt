@@ -151,7 +151,6 @@ else()
     set(BROTLI_LIBS "")
 endif()
 
-# NodeAgent 库
 add_library(nodeagent
     src/NodeAgent.cpp
     src/UplinkClient.cpp
@@ -166,7 +165,22 @@ add_library(nodeagent
     src/Logger.cpp
     src/ErrorStatistics.cpp
     src/ReconnectManager.cpp
+    src/LocalStore.cpp
+    src/OfflineAutonomyManager.cpp
+    src/SwarmPartitionManager.cpp
+    src/InterUavManager.cpp
+    src/StateMachine.cpp
+    src/ThreadManager.cpp
+    src/HeartbeatMonitor.cpp
+    src/RuleEngine.cpp
+    src/ConfigurationManager.cpp
+    src/MetricsCollector.cpp
+    src/AsyncLogger.cpp
+    src/DistributedTaskAllocator.cpp
+    src/CrossPartitionConflictResolver.cpp
+    src/PredictiveReconnector.cpp
 )
+
 
 target_include_directories(nodeagent
     PUBLIC
@@ -182,6 +196,14 @@ else()
 endif()
 
 target_link_libraries(nodeagent PRIVATE nlohmann_json::nlohmann_json)
+find_package(SQLite3 QUIET)
+if(SQLite3_FOUND)
+    message(STATUS "Found SQLite3: ${SQLite3_VERSION}")
+    target_link_libraries(nodeagent PRIVATE SQLite::SQLite3)
+else()
+    message(WARNING "SQLite3 not found. Offline autonomy features will be disabled.")
+    target_compile_definitions(nodeagent PRIVATE NO_OFFLINE_AUTONOMY)
+endif()
 
 # 如果找到 OpenSSL，链接 OpenSSL 库（FlowExecutor 需要）
 if(OpenSSL_FOUND)
@@ -314,6 +336,12 @@ if(NODEAGENT_BUILD_TESTS)
         tests/error_statistics_tests.cpp
         tests/reconnect_manager_tests.cpp
         tests/flow_handler_integration_tests.cpp
+        tests/test_metrics_collector.cpp
+        tests/test_async_logger.cpp
+        tests/test_offline_autonomy_integration.cpp
+        tests/test_swarm_partition_integration.cpp
+        tests/test_p2_enhancements.cpp
+        tests/test_e2e_scenarios.cpp
     )
 
     target_include_directories(nodeagent_unit_tests
@@ -355,4 +383,54 @@ if(NODEAGENT_BUILD_TESTS)
     # 启用测试发现
     include(GoogleTest)
     gtest_discover_tests(nodeagent_unit_tests)
+endif()
+
+
+    # 启用测试发现
+    include(GoogleTest)
+    gtest_discover_tests(nodeagent_unit_tests)
+endif()
+
+# Benchmark executable (optional)
+option(NODEAGENT_BUILD_BENCHMARKS "Build benchmarks" OFF)
+if(NODEAGENT_BUILD_BENCHMARKS)
+    find_package(benchmark QUIET)
+    if(benchmark_FOUND)
+        add_executable(nodeagent_benchmarks
+            benchmarks/benchmark_nodeagent.cpp
+        )
+        
+        target_include_directories(nodeagent_benchmarks
+            PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/include
+        )
+        
+        if(NODEAGENT_STANDALONE)
+            target_include_directories(nodeagent_benchmarks PRIVATE ${FALCONMINDSDK_INCLUDE_DIR})
+        else()
+            target_include_directories(nodeagent_benchmarks PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../FalconMindSDK/include)
+        endif()
+        
+        target_link_libraries(nodeagent_benchmarks
+            PRIVATE
+                nodeagent
+                benchmark::benchmark
+        )
+        
+        if(OpenSSL_FOUND)
+            target_link_libraries(nodeagent_benchmarks PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+        endif()
+        
+        if(ZLIB_FOUND)
+            target_link_libraries(nodeagent_benchmarks PRIVATE ZLIB::ZLIB)
+        endif()
+        
+        if(BROTLI_LIBS)
+            target_link_libraries(nodeagent_benchmarks PRIVATE ${BROTLI_LIBS})
+        endif()
+        
+        message(STATUS "Benchmarks enabled for nodeagent")
+    else()
+        message(STATUS "Google Benchmark not found, benchmarks disabled")
+    endif()
 endif()

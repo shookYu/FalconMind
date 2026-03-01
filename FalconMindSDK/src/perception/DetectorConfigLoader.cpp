@@ -29,6 +29,12 @@ std::string stripQuotes(const std::string& s) {
 DetectionBackendType parseBackend(const std::string& v) {
     std::string s = v;
     for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (s == "rknn") return DetectionBackendType::Rknn;
+    if (s == "cpu" || s == "cpuref") return DetectionBackendType::CpuReference;
+    return DetectionBackendType::Unknown;
+}
+    std::string s = v;
+    for (auto& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     if (s == "onnxruntime" || s == "onnx") return DetectionBackendType::OnnxRuntime;
     if (s == "rknn") return DetectionBackendType::Rknn;
     if (s == "tensorrt" || s == "trt") return DetectionBackendType::TensorRt;

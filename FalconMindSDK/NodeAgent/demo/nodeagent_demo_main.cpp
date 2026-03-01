@@ -23,6 +23,15 @@ int main(int argc, char* argv[]) {
     }
 
     // 1. 连接 SDK FlightConnectionService（模拟 PX4-SITL）
+    auto svc = std::make_shared<FlightConnectionService>();
+    FlightConnectionConfig cfg;
+    cfg.remoteAddress = "127.0.0.1";
+    cfg.remotePort = 14540;
+
+    if (!svc->connect(cfg)) {
+        std::cerr << "[nodeagent_demo] Failed to connect FlightConnectionService" << std::endl;
+        return 1;
+    }
     FlightConnectionService svc;
     FlightConnectionConfig cfg;
     cfg.remoteAddress = "127.0.0.1";
@@ -34,6 +43,23 @@ int main(int argc, char* argv[]) {
     }
 
     // 2. 创建 FlightStateSourceNode（会自动发布 Telemetry）
+    FlightStateSourceNode stateNode(*svc);
+    stateNode.start();
+
+    // 3. 创建并启动 NodeAgent
+    NodeAgent::Config agentCfg;
+    agentCfg.uavId = "uav0";
+    agentCfg.centerAddress = centerAddress;
+    agentCfg.centerPort = centerPort;
+    agentCfg.telemetryIntervalMs = 1000;
+
+    NodeAgent agent(agentCfg);
+    
+    // 关键：将 FlightConnectionService 设置到 NodeAgent
+    // 这样 NodeAgent 才能执行从 Console 接收到的命令和任务
+    agent.setFlightConnectionService(svc);
+    
+    if (!agent.start()) {
     FlightStateSourceNode stateNode(svc);
     stateNode.start();
 
@@ -62,6 +88,8 @@ int main(int argc, char* argv[]) {
     }
 
     // 5. 停止 NodeAgent 并断开连接
+    agent.stop();
+    svc->disconnect();
     agent.stop();
     svc.disconnect();
 

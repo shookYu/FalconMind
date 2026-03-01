@@ -28,7 +28,13 @@ DetectorBackendPtr PerceptionPluginManager::createDetector(const std::string& de
 
     // backendKey 目前简单使用 backendType 名称，后续可结合 deviceType/硬件平台细分
     std::string backendKey;
+    // backendKey 目前简单使用 backendType 名称，后续可结合 deviceType/硬件平台细分
+    std::string backendKey;
     switch (desc.backendType) {
+    case DetectionBackendType::Rknn:        backendKey = "rknn"; break;
+    case DetectionBackendType::CpuReference:backendKey = "cpu"; break;
+    default:                                backendKey = "unknown"; break;
+    }
     case DetectionBackendType::OnnxRuntime: backendKey = "onnxruntime"; break;
     case DetectionBackendType::Rknn:        backendKey = "rknn"; break;
     case DetectionBackendType::TensorRt:    backendKey = "tensorrt"; break;

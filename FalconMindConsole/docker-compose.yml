@@ -37,16 +37,27 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: falconmind-backend
+    ports:
+      - "9000:9000"
     environment:
       DATABASE_URL: postgresql://falconmind:falconmind123@postgres:5432/falconmind
       REDIS_URL: redis://:falconmind123@redis:6379/0
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
       ENVIRONMENT: production
+      ENABLE_CLUSTER_FEATURES: "true"
+      ENABLE_CONFLICT_RESOLUTION: "true"
+      AUTO_INIT_DB: "true"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - falconmind-network
     restart: unless-stopped
@@ -59,7 +70,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - falconmind-network
     restart: unless-stopped

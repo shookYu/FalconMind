@@ -1,0 +1,59 @@
+[Unit]
+Description=FalconMind NodeAgent - UAV Edge Computing Platform
+Documentation=https://github.com/your-org/FalconMind
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=nodeagent
+Group=nodeagent
+WorkingDirectory=/var/lib/nodeagent
+
+# Environment
+Environment="UAV_ID=UAV_001"
+Environment="UAV_NAME=Alpha"
+Environment="LOG_LEVEL=INFO"
+Environment="GCS_HOST=192.168.1.100"
+Environment="GCS_PORT=8080"
+Environment="DB_PATH=/var/lib/nodeagent/offline.db"
+Environment="METRICS_ENABLED=true"
+Environment="METRICS_PORT=9090"
+
+# Binary location
+ExecStart=/usr/local/bin/nodeagent_demo
+ExecStop=/bin/kill -TERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=512M
+CPUQuota=50%
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nodeagent /var/log/nodeagent
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nodeagent
+
+# Timeout
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  nodeagent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: falconmind-nodeagent:latest
+    container_name: nodeagent
+    privileged: true
+    network_mode: host
+    restart: unless-stopped
+    
+    # Environment variables
+    environment:
+      - UAV_ID=${UAV_ID:-UAV_001}
+      - UAV_NAME=${UAV_NAME:-Alpha}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - GCS_HOST=${GCS_HOST:-192.168.1.100}
+      - GCS_PORT=${GCS_PORT:-8080}
+      - SWARM_ID=${SWARM_ID:-SWARM_001}
+      - METRICS_ENABLED=${METRICS_ENABLED:-true}
+      - METRICS_PORT=${METRICS_PORT:-9090}
+    
+    # Volumes
+    volumes:
+      # Configuration
+      - ./config:/etc/nodeagent:ro
+      
+      # Persistent data
+      - nodeagent-data:/var/lib/nodeagent
+      
+      # Logs
+      - nodeagent-logs:/var/log/nodeagent
+      
+      # Device access (serial ports)
+      - /dev:/dev
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        labels: "service_name"
+        env: "UAV_ID"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "nodeagent-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Labels
+    labels:
+      - "service_name=nodeagent"
+      - "uav_id=${UAV_ID:-UAV_001}"
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nodeagent-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+    restart: unless-stopped
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nodeagent-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    profiles:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  nodeagent-data:
+    driver: local
+  nodeagent-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
