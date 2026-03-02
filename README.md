@@ -671,7 +671,63 @@ FalconMind/                          # 项目根目录
 
 早期原型工具（~~FalconBuilder~~、FalconMindViewer）已归档删除，其功能已完全整合到 FalconMindConsole。
 
-### FalconMindBuilder（可视化编排模块）
+### FalconMindBuilder（边缘侧可视化开发工具）
+
+**FalconMindBuilder** 是运行在 UAV **边缘设备**上的可视化开发工具，提供零代码/低代码的无人机业务开发能力。
+
+**核心特性：**
+- 🎨 **可视化编排**：拖拽式任务流程设计
+- 📋 **配置驱动**：JSON/YAML 配置，无需编译
+- 🚀 **即时生效**：在线编辑，实时部署
+- 🌐 **BS 架构**：浏览器访问，无需安装客户端
+- 🔧 **独立运行**：不依赖地面站，直连 UAV 即可开发
+
+**运行位置：**
+```
+UAV 边缘设备 (RK3588/RK3576)
+    │
+    ├── FalconMindBuilder (BS 架构服务)
+    │   ├── Vue3 前端 (浏览器访问 http://uav-ip:8080)
+    │   ├── Node.js 后端 (API 服务)
+    │   └── 本地配置存储 (SQLite)
+    │
+    └── FalconMindSDK (配置解释执行)
+        └── FlowExecutor (无编译执行)
+```
+
+**三种开发方式：**
+
+| 方式 | 运行位置 | 特点 | 适用场景 |
+|------|---------|------|---------|
+| **Builder（边缘侧）** | UAV 边缘设备 | 直连 UAV，即时部署 | 单 UAV 开发、现场调试 |
+| **Console（地面端）** | PC/服务器 | 集群管理，可集成 Builder | 多 UAV 管理、集中开发 |
+| **SDK 纯手搓** | 编译部署 | 灵活度最高 | 复杂定制、算法研究 |
+
+**文档资源：**
+- [📖 完整设计文档](./FalconMindBuilder/Doc/) - 包含架构设计、可行性分析、技术细节
+- [🚀 快速开始](./FalconMindBuilder/Doc/04_QuickStart.md) - 5分钟上手教程
+
+**架构关系：**
+```
+┌──────────────────────────┐      ┌──────────────────────────┐
+│    地面端 (可选)          │      │    边缘端 (UAV)          │
+│  FalconMindConsole       │◀────▶│  FalconMindBuilder       │
+│  - 集群监控              │ MQTT │  - 可视化编排            │
+│  - 任务管理              │      │  - 即时部署              │
+│  - 可集成 Builder        │      │  - 独立运行              │
+└──────────────────────────┘      └───────────┬──────────────┘
+                                              │
+                                              ▼
+                                    ┌──────────────────────┐
+                                    │  FalconMindSDK       │
+                                    │  - 配置解释执行      │
+                                    │  - FlowExecutor      │
+                                    └──────────────────────┘
+```
+
+**快速访问：**
+- 边缘侧 Builder：`http://uav-ip:8080`（UAV 连接 WiFi/网线后访问）
+- 地面端 Console：`http://ground-station-ip:8080`
 
 **FalconMindBuilder** 是 FalconMindConsole 的内置可视化编排模块，提供零代码/低代码的无人机业务开发能力。
 
