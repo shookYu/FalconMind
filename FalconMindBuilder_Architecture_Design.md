@@ -1,4 +1,4 @@
-# FalconBuilder 架构详细设计
+# FalconMindBuilder 架构详细设计
 
 ## 系统架构图
 

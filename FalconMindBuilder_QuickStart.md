@@ -1,8 +1,8 @@
-# FalconBuilder 快速开始指南
+# FalconMindBuilder 快速开始指南
 
 ## 概述
 
-FalconBuilder 是 FalconMind 一体化智能飞控+SDK 的可视化开发工具，让你无需编写代码即可快速构建无人机业务应用。
+FalconMindBuilder 是 FalconMind 一体化智能飞控+SDK 的可视化开发工具，让你无需编写代码即可快速构建无人机业务应用。
 
 ## 核心概念
 
@@ -30,7 +30,7 @@ FalconBuilder 是 FalconMind 一体化智能飞控+SDK 的可视化开发工具�
 
 #### Step 1: 选择模板
 
-1. 打开 FalconBuilder (`http://uav-ip:8080/builder`)
+1. 打开 FalconMindBuilder (`http://uav-ip:8080/builder`)
 2. 点击"新建项目"
 3. 选择模板："森林火灾搜索"
 4. 输入项目名称："Forest_Search_001"
@@ -509,7 +509,7 @@ while True:
 
 ```bash
 # 克隆示例仓库
-git clone https://github.com/shookYu/FalconBuilder-Examples.git
+git clone https://github.com/shookYu/FalconMindBuilder-Examples.git
 
 # 示例项目
 examples/
