@@ -13,6 +13,9 @@ export interface PolygonArea {
   name: string
   points: GeoPoint[]
   color?: string
+  type?: 'polygon' | 'rectangle' | 'circle'
+  center?: GeoPoint
+  radius?: number
 }
 
 export function useMapDrawing(
@@ -33,41 +36,253 @@ export function useMapDrawing(
   const drawingEntities: any[] = []
   const areaEntities: any[] = []
   
+  // For rectangle/circle drawing
+  let startPoint: GeoPoint | null = null
+  let tempShape: any = null
+  let mouseMoveHandler: any = null
+  
   const startDrawing = (mode: DrawMode) => {
     if (!viewerRef.value) return
     
     drawMode.value = mode
     isDrawing.value = true
     currentPoints.value = []
+    startPoint = null
     
-    // Add click handler
     const handler = new Cesium.value.ScreenSpaceEventHandler(viewerRef.value.canvas)
     
-    handler.setInputAction((click: any) => {
-      const cartesian = viewerRef.value.camera.pickEllipsoid(
-        click.position,
-        viewerRef.value.scene.globe.ellipsoid
+    if (mode === 'polygon') {
+      // Polygon drawing with multiple clicks
+      handler.setInputAction((click: any) => {
+        const cartesian = viewerRef.value.camera.pickEllipsoid(
+          click.position,
+          viewerRef.value.scene.globe.ellipsoid
+        )
+        
+        if (cartesian) {
+          const cartographic = Cesium.value.Cartographic.fromCartesian(cartesian)
+          const point: GeoPoint = {
+            longitude: Cesium.value.Math.toDegrees(cartographic.longitude),
+            latitude: Cesium.value.Math.toDegrees(cartographic.latitude),
+            altitude: 0
+          }
+          
+          addPoint(point)
+        }
+      }, Cesium.value.ScreenSpaceEventType.LEFT_CLICK)
+      
+      // Right click to finish polygon
+      handler.setInputAction(() => {
+        finishPolygonDrawing()
+        cleanupDrawing(handler)
+      }, Cesium.value.ScreenSpaceEventType.RIGHT_CLICK)
+      
+    } else if (mode === 'rectangle' || mode === 'circle') {
+      // Rectangle/Circle drawing with drag
+      handler.setInputAction((click: any) => {
+        const cartesian = viewerRef.value.camera.pickEllipsoid(
+          click.position,
+          viewerRef.value.scene.globe.ellipsoid
+        )
+        
+        if (cartesian) {
+          const cartographic = Cesium.value.Cartographic.fromCartesian(cartesian)
+          startPoint = {
+            longitude: Cesium.value.Math.toDegrees(cartographic.longitude),
+            latitude: Cesium.value.Math.toDegrees(cartographic.latitude),
+            altitude: 0
+          }
+          
+          // Add mouse move handler for preview
+          mouseMoveHandler = new Cesium.value.ScreenSpaceEventHandler(viewerRef.value.canvas)
+          mouseMoveHandler.setInputAction((movement: any) => {
+            if (!startPoint) return
+            
+            const endCartesian = viewerRef.value.camera.pickEllipsoid(
+              movement.endPosition,
+              viewerRef.value.scene.globe.ellipsoid
+            )
+            
+            if (endCartesian) {
+              const endCartographic = Cesium.value.Cartographic.fromCartesian(endCartesian)
+              const endPoint = {
+                longitude: Cesium.value.Math.toDegrees(endCartographic.longitude),
+                latitude: Cesium.value.Math.toDegrees(endCartographic.latitude),
+                altitude: 0
+              }
+              
+              updateShapePreview(startPoint, endPoint, mode)
+            }
+          }, Cesium.value.ScreenSpaceEventType.MOUSE_MOVE)
+        }
+      }, Cesium.value.ScreenSpaceEventType.LEFT_DOWN)
+      
+      // Release to finish
+      handler.setInputAction(() => {
+        if (startPoint && tempShape) {
+          finishShapeDrawing(mode)
+        }
+        cleanupDrawing(handler)
+        if (mouseMoveHandler) {
+          mouseMoveHandler.destroy()
+          mouseMoveHandler = null
+        }
+      }, Cesium.value.ScreenSpaceEventType.LEFT_UP)
+    }
+    
+    drawingEntities.push(handler)
+  }
+  
+  const updateShapePreview = (start: GeoPoint, end: GeoPoint, mode: DrawMode) => {
+    // Remove previous preview
+    if (tempShape) {
+      viewerRef.value.entities.remove(tempShape)
+      tempShape = null
+    }
+    
+    if (mode === 'rectangle') {
+      const points = [
+        start,
+        { longitude: end.longitude, latitude: start.latitude, altitude: 0 },
+        end,
+        { longitude: start.longitude, latitude: end.latitude, altitude: 0 }
+      ]
+      
+      const positions = points.map(p =>
+        Cesium.value.Cartesian3.fromDegrees(p.longitude, p.latitude, p.altitude || 0)
       )
       
-      if (cartesian) {
-        const cartographic = Cesium.value.Cartographic.fromCartesian(cartesian)
-        const point: GeoPoint = {
+      tempShape = viewerRef.value.entities.add({
+        polygon: {
+          hierarchy: new Cesium.value.PolygonHierarchy(positions),
+          material: Cesium.value.Color.YELLOW.withAlpha(0.3),
+          outline: true,
+          outlineColor: Cesium.value.Color.YELLOW,
+          outlineWidth: 2
+        }
+      })
+    } else if (mode === 'circle') {
+      const center = Cesium.value.Cartesian3.fromDegrees(start.longitude, start.latitude, 0)
+      const endCartesian = Cesium.value.Cartesian3.fromDegrees(end.longitude, end.latitude, 0)
+      const radius = Cesium.value.Cartesian3.distance(center, endCartesian)
+      
+      tempShape = viewerRef.value.entities.add({
+        position: center,
+        ellipse: {
+          semiMinorAxis: radius,
+          semiMajorAxis: radius,
+          material: Cesium.value.Color.YELLOW.withAlpha(0.3),
+          outline: true,
+          outlineColor: Cesium.value.Color.YELLOW,
+          outlineWidth: 2
+        }
+      })
+    }
+  }
+  
+  const finishShapeDrawing = (mode: DrawMode) => {
+    if (!startPoint || !tempShape) return
+    
+    const area: PolygonArea = {
+      id: `area_${Date.now()}`,
+      name: `Search Area ${drawnAreas.value.length + 1}`,
+      points: [],
+      color: '#409EFF',
+      type: mode
+    }
+    
+    if (mode === 'rectangle') {
+      // Get the rectangle bounds from tempShape
+      const hierarchy = tempShape.polygon.hierarchy.getValue()
+      const positions = hierarchy.positions
+      
+      area.points = positions.map((pos: any) => {
+        const cartographic = Cesium.value.Cartographic.fromCartesian(pos)
+        return {
           longitude: Cesium.value.Math.toDegrees(cartographic.longitude),
           latitude: Cesium.value.Math.toDegrees(cartographic.latitude),
           altitude: 0
         }
-        
-        addPoint(point)
+      })
+    } else if (mode === 'circle') {
+      // Store circle parameters
+      const position = tempShape.position.getValue()
+      const ellipse = tempShape.ellipse
+      const radius = ellipse.semiMajorAxis.getValue()
+      
+      const cartographic = Cesium.value.Cartographic.fromCartesian(position)
+      area.center = {
+        longitude: Cesium.value.Math.toDegrees(cartographic.longitude),
+        latitude: Cesium.value.Math.toDegrees(cartographic.latitude),
+        altitude: 0
       }
-    }, Cesium.value.ScreenSpaceEventType.LEFT_CLICK)
+      area.radius = radius
+      
+      // Generate polygon points from circle
+      area.points = circleToPolygon(area.center, radius, 32)
+    }
     
-    // Right click to finish
-    handler.setInputAction(() => {
-      finishDrawing()
-      handler.destroy()
-    }, Cesium.value.ScreenSpaceEventType.RIGHT_CLICK)
+    // Remove preview and create final entity
+    viewerRef.value.entities.remove(tempShape)
+    tempShape = null
     
-    drawingEntities.push(handler)
+    const polygonEntity = createAreaEntity(area)
+    areaEntities.push(polygonEntity)
+    drawnAreas.value.push(area)
+    
+    isDrawing.value = false
+    drawMode.value = 'none'
+    startPoint = null
+    
+    options.onAreaComplete?.(area)
+  }
+  
+  const circleToPolygon = (center: GeoPoint, radius: number, segments: number): GeoPoint[] => {
+    const points: GeoPoint[] = []
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * 2 * Math.PI
+      // Approximate: 1 degree longitude ≈ 111km * cos(lat)
+      // 1 degree latitude ≈ 111km
+      const latOffset = (Math.sin(angle) * radius) / 111000
+      const lonOffset = (Math.cos(angle) * radius) / (111000 * Math.cos(center.latitude * Math.PI / 180))
+      
+      points.push({
+        longitude: center.longitude + lonOffset,
+        latitude: center.latitude + latOffset,
+        altitude: 0
+      })
+    }
+    return points
+  }
+  
+  const createAreaEntity = (area: PolygonArea) => {
+    const positions = area.points.map(p =>
+      Cesium.value.Cartesian3.fromDegrees(p.longitude, p.latitude, p.altitude || 0)
+    )
+    
+    return viewerRef.value.entities.add({
+      id: area.id,
+      name: area.name,
+      polygon: {
+        hierarchy: new Cesium.value.PolygonHierarchy(positions),
+        material: Cesium.value.Color.fromCssColorString(area.color).withAlpha(0.3),
+        outline: true,
+        outlineColor: Cesium.value.Color.fromCssColorString(area.color),
+        outlineWidth: 2,
+        height: 0,
+        extrudedHeight: 100
+      },
+      label: {
+        text: area.name,
+        font: '14px sans-serif',
+        fillColor: Cesium.value.Color.WHITE,
+        outlineColor: Cesium.value.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.value.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.value.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.value.Cartesian2(0, -10)
+      }
+    })
   }
   
   const addPoint = (point: GeoPoint) => {
@@ -122,7 +337,7 @@ export function useMapDrawing(
     drawingEntities.push(lineEntity)
   }
   
-  const finishDrawing = () => {
+  const finishPolygonDrawing = () => {
     if (currentPoints.value.length < 3) {
       cancelDrawing()
       return
@@ -132,38 +347,11 @@ export function useMapDrawing(
       id: `area_${Date.now()}`,
       name: `Search Area ${drawnAreas.value.length + 1}`,
       points: [...currentPoints.value],
-      color: '#409EFF'
+      color: '#409EFF',
+      type: 'polygon'
     }
     
-    // Create final polygon
-    const positions = area.points.map(p =>
-      Cesium.value.Cartesian3.fromDegrees(p.longitude, p.latitude, p.altitude || 0)
-    )
-    
-    const polygonEntity = viewerRef.value.entities.add({
-      id: area.id,
-      name: area.name,
-      polygon: {
-        hierarchy: new Cesium.value.PolygonHierarchy(positions),
-        material: Cesium.value.Color.fromCssColorString(area.color).withAlpha(0.3),
-        outline: true,
-        outlineColor: Cesium.value.Color.fromCssColorString(area.color),
-        outlineWidth: 2,
-        height: 0,
-        extrudedHeight: 100
-      },
-      label: {
-        text: area.name,
-        font: '14px sans-serif',
-        fillColor: Cesium.value.Color.WHITE,
-        outlineColor: Cesium.value.Color.BLACK,
-        outlineWidth: 2,
-        style: Cesium.value.LabelStyle.FILL_AND_OUTLINE,
-        verticalOrigin: Cesium.value.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.value.Cartesian2(0, -10)
-      }
-    })
-    
+    const polygonEntity = createAreaEntity(area)
     areaEntities.push(polygonEntity)
     drawnAreas.value.push(area)
     
@@ -177,11 +365,31 @@ export function useMapDrawing(
     options.onAreaComplete?.(area)
   }
   
+  const cleanupDrawing = (handler: any) => {
+    if (handler) {
+      handler.destroy()
+    }
+    clearDrawingEntities()
+    if (tempShape) {
+      viewerRef.value.entities.remove(tempShape)
+      tempShape = null
+    }
+  }
+  
   const cancelDrawing = () => {
     clearDrawingEntities()
+    if (tempShape) {
+      viewerRef.value.entities.remove(tempShape)
+      tempShape = null
+    }
+    if (mouseMoveHandler) {
+      mouseMoveHandler.destroy()
+      mouseMoveHandler = null
+    }
     isDrawing.value = false
     drawMode.value = 'none'
     currentPoints.value = []
+    startPoint = null
   }
   
   const clearDrawingEntities = () => {
@@ -249,7 +457,8 @@ export function useMapDrawing(
       type: 'Feature',
       properties: {
         id: area.id,
-        name: area.name
+        name: area.name,
+        type: area.type
       },
       geometry: {
         type: 'Polygon',
@@ -266,7 +475,7 @@ export function useMapDrawing(
     currentPoints,
     drawnAreas,
     startDrawing,
-    finishDrawing,
+    finishDrawing: finishPolygonDrawing,
     cancelDrawing,
     removeArea,
     clearAllAreas,

@@ -4,59 +4,59 @@
     <div class="map-container">
       <CesiumViewer ref="cesiumViewerRef" />
       
-      <!-- Drawing Controls -->
-      <div class="drawing-controls">
-        <el-button-group>
-          <el-button
-            :type="drawMode === 'polygon' ? 'primary' : 'default'"
-            :icon="EditPen"
-            @click="toggleDrawing('polygon')"
-          >
-            绘制区域
-          </el-button>
-          <el-button
-            type="danger"
-            :icon="Delete"
-            @click="clearAllAreas"
-            :disabled="drawnAreas.length === 0"
-          >
-            清除全部
-          </el-button>
-        </el-button-group>
-        
-        <div v-if="isDrawing" class="drawing-hint">
-          <el-alert
-            type="info"
-            :closable="false"
-            show-icon
-          >
-            <template #title>
-              绘制模式
-            </template>
-            左键点击添加点，右键点击完成绘制
-          </el-alert>
-          <el-button size="small" @click="cancelDrawing">取消</el-button>
-        </div>
+      <!-- Drawing Toolbar -->
+      <div class="toolbar-container">
+        <DrawingToolbar
+          :draw-mode="drawMode"
+          :is-drawing="isDrawing"
+          :drawn-areas="drawnAreas"
+          :selected-area-id="selectedAreaId"
+          :selected-areas="selectedAreas"
+          :is-dividing="isDividing"
+          :can-divide="canDivide"
+          @set-draw-mode="handleSetDrawMode"
+          @cancel-drawing="cancelDrawing"
+          @clear-all="clearAllAreas"
+          @divide-area="handleDivideArea"
+          @merge-areas="handleMergeAreas"
+          @export-areas="handleExportAreas"
+        />
+      </div>
+      
+      <!-- Layer Switcher -->
+      <div class="layer-switcher-container">
+        <MapLayerSwitcher
+          :current-layer="currentLayer"
+          :current-layer-name="currentLayerName"
+          :opacity="layerOpacity"
+          :available-layers="availableLayers"
+          @switch-layer="handleSwitchLayer"
+          @toggle-satellite="toggleSatellite"
+          @update:opacity="setLayerOpacity"
+        />
       </div>
       
       <!-- UAV List Overlay -->
       <div v-if="showUAVPanel" class="uav-panel">
         <div class="panel-header">
-          <span>无人机 ({{ uavs.length }})</span>
-          <el-button
-            size="small"
-            :icon="Refresh"
-            circle
-            @click="refreshUAVs"
-          />
+          <span>无人机 ({{ onlineUAVs.length }})</span>
+          <div class="connection-status">
+            <span class="status-indicator" :class="{ connected: isConnected }"></span>
+            <el-button
+              size="small"
+              :icon="Refresh"
+              circle
+              @click="refreshUAVs"
+            />
+          </div>
         </div>
         
         <el-scrollbar max-height="300px">
           <div
-            v-for="uav in uavs"
+            v-for="uav in onlineUAVs"
             :key="uav.id"
             class="uav-item"
-            :class="{ active: selectedUAV?.id === uav.id }"
+            :class="{ active: selectedUAVId === uav.id }"
             @click="selectUAV(uav.id)"
           >
             <div class="uav-info">
@@ -66,15 +66,21 @@
               </div>
               <div class="uav-details">
                 <span>{{ formatCoordinate(uav.latitude) }}, {{ formatCoordinate(uav.longitude) }}</span>
-                <span v-if="uav.batteryLevel !== undefined">
-                  <el-tag size="small" :type="getBatteryType(uav.batteryLevel)">
-                    {{ uav.batteryLevel }}%
+                <span v-if="uav.battery !== undefined">
+                  <el-tag size="small" :type="getBatteryType(uav.battery)">
+                    {{ Math.round(uav.battery) }}%
                   </el-tag>
                 </span>
               </div>
             </div>
           </div>
         </el-scrollbar>
+        
+        <div v-if="!isConnected" class="connection-warning">
+          <el-alert type="warning" :closable="false" show-icon>
+            实时连接断开，使用轮询模式
+          </el-alert>
+        </div>
       </div>
     </div>
     
@@ -92,32 +98,48 @@
           v-for="area in drawnAreas"
           :key="area.id"
           class="area-item"
+          :class="{ 
+            selected: selectedAreaId === area.id,
+            'in-selection': selectedAreas.includes(area.id)
+          }"
+          @click="handleAreaClick(area.id, $event)"
         >
           <div class="area-info">
             <el-input
               v-model="area.name"
               size="small"
               placeholder="区域名称"
+              @click.stop
             />
+            
             <div class="area-stats">
               <span>{{ area.points.length }} 个点</span>
               <span>面积: ~{{ calculateArea(area) }} km²</span>
+              <span v-if="area.type" class="area-type">{{ getAreaTypeLabel(area.type) }}</span>
             </div>
           </div>
           
           <div class="area-actions">
+            <el-checkbox
+              v-model="areaSelection[area.id]"
+              size="small"
+              @click.stop
+              @change="handleAreaSelectionChange(area.id)"
+            />
+            
             <el-button
               size="small"
               :icon="View"
               circle
-              @click="flyToArea(area.id)"
+              @click.stop="flyToArea(area.id)"
             />
+            
             <el-button
               size="small"
               type="danger"
               :icon="Delete"
               circle
-              @click="removeArea(area.id)"
+              @click.stop="removeArea(area.id)"
             />
           </div>
         </div>
@@ -138,19 +160,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 
-  EditPen, 
-  Delete, 
   View, 
   Check, 
-  Refresh 
+  Refresh,
+  Delete
 } from '@element-plus/icons-vue'
 import CesiumViewer from './CesiumViewer.vue'
-import { useCesium } from '../../composables/useCesium'
-import { useMapDrawing, type PolygonArea } from '../../composables/useMapDrawing'
-import { useUAVTracking, type UAVPosition } from '../../composables/useUAVTracking'
+import DrawingToolbar from './DrawingToolbar.vue'
+import MapLayerSwitcher from './MapLayerSwitcher.vue'
+import { useCesium } from '@/composables/useCesium'
+import { useMapDrawing, type DrawMode, type PolygonArea } from '@/composables/useMapDrawing'
+import { useUAVRealtime } from '@/composables/useUAVRealtime'
+import { useMapLayers, type LayerType } from '@/composables/useMapLayers'
+import { useAreaDivision, type AreaDivisionConfig } from '@/composables/useAreaDivision'
 
 const props = defineProps<{
   initialAreas?: PolygonArea[]
@@ -184,32 +209,145 @@ const {
   }
 })
 
-// UAV tracking
+// UAV realtime tracking
 const {
-  uavs,
-  selectedUAV,
-  addOrUpdateUAV,
-  removeUAV,
+  isConnected,
+  onlineUAVs,
+  selectedUAVId,
   selectUAV,
-  clearAllUAVs
-} = useUAVTracking(viewer, {
-  showTrails: true,
-  onUAVClick: (uav) => {
-    ElMessage.info(`选中无人机: ${uav.name}`)
+  uavList
+} = useUAVRealtime({
+  enableWebSocket: true,
+  updateInterval: 1000,
+  onTelemetryUpdate: (uavId, telemetry) => {
+    // Update UAV on map
+    const uav = uavList.value.find(u => u.id === uavId)
+    if (uav && viewer.value) {
+      // UAV position updated automatically by useUAVRealtime
+    }
   }
 })
 
+// Map layers
+const {
+  currentLayer,
+  currentLayerName,
+  opacity: layerOpacity,
+  availableLayers,
+  switchLayer,
+  setOpacity: setLayerOpacity,
+  toggleSatellite,
+  initializeLayer
+} = useMapLayers(viewer)
+
+// Area division
+const {
+  isProcessing: isDividing,
+  divideArea,
+  mergeAreas
+} = useAreaDivision(viewer, drawnAreas)
+
+// Area selection for merge
+const selectedAreaId = ref<string | null>(null)
+const selectedAreas = ref<string[]>([])
+const areaSelection = ref<Record<string, boolean>>({})
+
+const canDivide = computed(() => drawnAreas.value.length > 0)
+
+// Initialize
+onMounted(() => {
+  initializeLayer()
+  
+  // Load initial areas
+  if (props.initialAreas) {
+    props.initialAreas.forEach(area => {
+      drawnAreas.value.push(area)
+    })
+  }
+})
+
+// Watch drawnAreas changes
+watch(drawnAreas, () => {
+  emit('update:areas', drawnAreas.value)
+}, { deep: true })
+
 // Methods
-const toggleDrawing = (mode: 'polygon') => {
+const handleSetDrawMode = (mode: DrawMode) => {
   if (isDrawing.value) {
     cancelDrawing()
-  } else {
+  }
+  if (mode !== 'none') {
     startDrawing(mode)
   }
 }
 
+const handleSwitchLayer = (layerId: LayerType) => {
+  switchLayer(layerId)
+}
+
+const handleAreaClick = (areaId: string, event: MouseEvent) => {
+  if (event.ctrlKey || event.metaKey) {
+    // Toggle selection with Ctrl/Cmd
+    const index = selectedAreas.value.indexOf(areaId)
+    if (index >= 0) {
+      selectedAreas.value.splice(index, 1)
+    } else {
+      selectedAreas.value.push(areaId)
+    }
+  } else {
+    // Single select
+    selectedAreaId.value = selectedAreaId.value === areaId ? null : areaId
+  }
+}
+
+const handleAreaSelectionChange = (areaId: string) => {
+  const isSelected = areaSelection.value[areaId]
+  const index = selectedAreas.value.indexOf(areaId)
+  
+  if (isSelected && index < 0) {
+    selectedAreas.value.push(areaId)
+  } else if (!isSelected && index >= 0) {
+    selectedAreas.value.splice(index, 1)
+  }
+}
+
+const handleDivideArea = async (areaId: string, config: AreaDivisionConfig) => {
+  try {
+    await divideArea(areaId, config)
+    ElMessage.success('区域分割完成')
+    selectedAreaId.value = null
+  } catch (error: any) {
+    ElMessage.error(error.message || '区域分割失败')
+  }
+}
+
+const handleMergeAreas = (areaIds: string[]) => {
+  const merged = mergeAreas(areaIds)
+  if (merged) {
+    ElMessage.success('区域合并完成')
+    selectedAreas.value = []
+    areaSelection.value = {}
+  }
+}
+
+const handleExportAreas = () => {
+  const geojson = {
+    type: 'FeatureCollection',
+    features: drawnAreas.value.map(area => getAreaGeoJSON(area.id)).filter(Boolean)
+  }
+  
+  const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `search-areas-${new Date().toISOString().split('T')[0]}.geojson`
+  link.click()
+  URL.revokeObjectURL(url)
+  
+  ElMessage.success('区域已导出')
+}
+
 const calculateArea = (area: PolygonArea): string => {
-  // Simplified area calculation (approximate)
   if (area.points.length < 3) return '0'
   
   let area2 = 0
@@ -220,12 +358,12 @@ const calculateArea = (area: PolygonArea): string => {
     area2 -= area.points[j].longitude * area.points[i].latitude
   }
   
-  // Convert to km² (rough approximation)
   const km2 = Math.abs(area2) * 111 * 111 / 2
   return km2.toFixed(2)
 }
 
-const formatCoordinate = (coord: number): string => {
+const formatCoordinate = (coord?: number): string => {
+  if (coord === undefined) return '--'
   return coord.toFixed(4)
 }
 
@@ -235,71 +373,22 @@ const getBatteryType = (level: number): string => {
   return 'danger'
 }
 
+const getAreaTypeLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    polygon: '多边形',
+    rectangle: '矩形',
+    circle: '圆形'
+  }
+  return labels[type] || type
+}
+
 const confirmAreas = () => {
   emit('confirm', drawnAreas.value)
-  ElMessage.success(`已确认 ${drawnAreas.length} 个搜索区域`)
+  ElMessage.success(`已确认 ${drawnAreas.value.length} 个搜索区域`)
 }
 
 const refreshUAVs = () => {
-  // In real app, this would fetch from API
   ElMessage.info('刷新无人机列表')
-}
-
-// Mock UAV data for demonstration
-onMounted(() => {
-  // Add some mock UAVs
-  setTimeout(() => {
-    addOrUpdateUAV({
-      id: 'UAV_001',
-      name: 'Alpha-1',
-      longitude: 116.4074,
-      latitude: 39.9042,
-      altitude: 100,
-      heading: 45,
-      speed: 15,
-      status: 'mission',
-      batteryLevel: 85
-    })
-    
-    addOrUpdateUAV({
-      id: 'UAV_002',
-      name: 'Beta-2',
-      longitude: 116.4174,
-      latitude: 39.9142,
-      altitude: 120,
-      heading: 90,
-      speed: 12,
-      status: 'online',
-      batteryLevel: 72
-    })
-  }, 1000)
-  
-  // Simulate UAV movement
-  const interval = setInterval(() => {
-    uavs.value.forEach(uav => {
-      if (uav.status === 'mission') {
-        addOrUpdateUAV({
-          ...uav,
-          longitude: uav.longitude + (Math.random() - 0.5) * 0.001,
-          latitude: uav.latitude + (Math.random() - 0.5) * 0.001,
-          heading: (uav.heading + Math.random() * 10 - 5) % 360
-        })
-      }
-    })
-  }, 2000)
-  
-  onUnmounted(() => {
-    clearInterval(interval)
-    clearAllUAVs()
-    clearAllAreas()
-  })
-})
-
-// Load initial areas
-if (props.initialAreas) {
-  props.initialAreas.forEach(area => {
-    drawnAreas.value.push(area)
-  })
 }
 </script>
 
@@ -316,22 +405,19 @@ if (props.initialAreas) {
   min-height: 500px;
 }
 
-.drawing-controls {
+.toolbar-container {
   position: absolute;
   top: 10px;
   left: 10px;
+  right: 60px;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  
-  .drawing-hint {
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+}
+
+.layer-switcher-container {
+  position: absolute;
+  bottom: 30px;
+  right: 10px;
+  z-index: 1000;
 }
 
 .uav-panel {
@@ -351,6 +437,12 @@ if (props.initialAreas) {
     padding: 12px 16px;
     border-bottom: 1px solid #e4e7ed;
     font-weight: 500;
+    
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   }
   
   .uav-item {
@@ -383,6 +475,10 @@ if (props.initialAreas) {
       color: #909399;
     }
   }
+  
+  .connection-warning {
+    padding: 8px;
+  }
 }
 
 .status-dot {
@@ -395,6 +491,17 @@ if (props.initialAreas) {
   &.offline { background-color: #909399; }
   &.mission { background-color: #409eff; }
   &.error { background-color: #f56c6c; }
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #f56c6c;
+  
+  &.connected {
+    background-color: #67c23a;
+  }
 }
 
 .area-sidebar {
@@ -422,6 +529,21 @@ if (props.initialAreas) {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background-color: #f5f7fa;
+    }
+    
+    &.selected {
+      background-color: #ecf5ff;
+      border-left: 3px solid #409eff;
+    }
+    
+    &.in-selection {
+      background-color: #fdf6ec;
+    }
     
     .area-info {
       flex: 1;
@@ -433,12 +555,20 @@ if (props.initialAreas) {
         color: #909399;
         display: flex;
         gap: 12px;
+        flex-wrap: wrap;
+        
+        .area-type {
+          background: #e4e7ed;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
       }
     }
     
     .area-actions {
       display: flex;
       gap: 4px;
+      align-items: center;
     }
   }
   
