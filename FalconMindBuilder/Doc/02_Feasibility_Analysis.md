@@ -1,6 +1,16 @@
 # FalconMindBuilder 产品架构可行性分析
 
-> **重要说明**：FalconMindBuilder 是 FalconMindConsole 的内置模块，不是独立产品。
+> **重要说明**：FalconMindBuilder 是**边缘侧**可视化开发工具，运行在 UAV 边缘设备上（RK3588/RK3576），不是地面端 Console 的模块。
+> 
+> **架构关系**（三种开发方式）：
+> - **FalconMindBuilder**：边缘侧可视化编排工具（`http://uav-ip:8080`）
+> - **FalconMindConsole**：地面端控制平台（`http://ground-station-ip:8080`）
+> - **SDK 纯手搓**：直接调用 SDK API 编写 C++ 代码
+> 
+> **执行方式**：
+> - Builder 生成 JSON/YAML 配置（不是代码）
+> - SDK FlowExecutor 解释执行配置（无编译）
+> - 在线编辑、即时生效
 > 
 > 架构关系：
 > - **FalconMindConsole**：地面控制平台（宿主）
@@ -10,7 +20,14 @@
 
 ## 产品定位
 
-**FalconMindBuilder** 是 FalconMind 一体化智能飞控+SDK 的**可视化编排模块**，嵌入在 FalconMindConsole 中，目标是让客户基于 SDK 快速开发灵活多变的无人机业务，而不关心底层技术细节。
+**FalconMindBuilder** 是 FalconMind 一体化智能飞控+SDK 的**边缘侧可视化开发工具**，运行在 UAV 边缘设备上，提供 BS 架构的 Web UI，让用户通过浏览器即可快速开发无人机业务，而不关心底层技术细节。
+
+**开发方式对比：**
+| 方式 | 运行位置 | 访问方式 | 适用场景 |
+|------|---------|---------|---------|
+| **Builder** | 边缘端 (UAV) | `http://uav-ip:8080` | 单 UAV 开发、现场调试 |
+| **Console** | 地面端 (PC) | `http://ground-station-ip:8080` | 多 UAV 集群管理 |
+| **SDK** | 编译部署 | C++ API 调用 | 复杂定制、算法研究 |
 
 **核心特性：配置解释执行（无编译）**
 - Builder 生成 JSON/YAML 配置（不是代码）
@@ -131,8 +148,30 @@
 | 代码生成+编译 | Builder → C++ → 编译 → 执行 | 灵活、可优化 | 需要编译环境、无法在线调试 | 不采用 |
 | 脚本解释执行 | Builder → Lua/Python → 执行 | 灵活性高 | 运行时开销、安全性问题 | 可选扩展 |
 
-**执行流程：**
-1. 用户在 FalconMindConsole 的 Builder 模块中可视化编排任务
+**执行流程（三种方式）：**
+
+**方式一：Builder 独立运行（边缘侧）**
+1. 用户浏览器访问 UAV 上的 Builder (`http://uav-ip:8080`)
+2. 在 Builder 中可视化编排任务
+3. Builder 生成 JSON/YAML 配置并本地保存
+4. SDK FlowExecutor 直接解释执行配置
+5. **全程在 UAV 上完成，无需地面站**
+
+**方式二：Console 集成 Builder（地面端）**
+1. 用户在 Console 中使用内置的 Builder 模块编排任务
+2. Console 生成 JSON/YAML 配置
+3. Console 通过 MQTT/HTTP 将配置下发到 UAV
+4. UAV 上的 FlowExecutor 解释执行配置
+5. **适合多 UAV 集群管理场景**
+
+**方式三：SDK 纯手搓（代码开发）**
+1. 开发者编写 C++ 代码调用 SDK API
+2. 编译并部署到 UAV
+3. 直接执行编译后的程序
+4. **适合复杂定制和算法研究**
+
+**共同特点：全程无编译、无代码生成、在线编辑即时生效**
+**共同特点：无论哪种方式，都是生成 JSON 配置并由 SDK FlowExecutor 解释执行，全程无编译、无代码生成、在线编辑即时生效**
 2. Builder 生成 JSON/YAML 配置文件（不是代码！）
 3. Console 通过 MQTT/HTTP 将配置下发到 UAV 的 NodeAgent
 4. NodeAgent 使用 SDK FlowExecutor 直接解释执行配置

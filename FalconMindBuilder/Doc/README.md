@@ -183,6 +183,15 @@ FalconMindBuilder/Doc/
 
 | 术语 | 说明 |
 |------|------|
+| **FalconMindBuilder** | **边缘侧**可视化开发工具，运行在 UAV 上，提供 BS 架构的 Web UI |
+| **FalconMindConsole** | **地面端**控制平台，可集成 Builder 功能，用于集群管理 |
+| **配置解释执行** | Builder 生成 JSON 配置，SDK FlowExecutor 直接解释执行（无编译）|
+| **三层抽象** | Level 1（配置化）、Level 2（可视化编排）、Level 3（脚本扩展）|
+| **NodeAgent** | UAV 边缘自主代理，也可以看作 Builder 的后端执行引擎 |
+| **FlowExecutor** | SDK 配置解释执行引擎 |
+
+| 术语 | 说明 |
+|------|------|
 | **FalconMindBuilder** | FalconMindConsole 的可视化编排模块 |
 | **配置解释执行** | Builder 生成 JSON 配置，SDK FlowExecutor 直接解释执行（无编译）|
 | **三层抽象** | Level 1（配置化）、Level 2（可视化编排）、Level 3（脚本扩展）|
@@ -190,6 +199,26 @@ FalconMindBuilder/Doc/
 | **FlowExecutor** | SDK 配置解释执行引擎 |
 
 ### 关键设计决策
+
+1. **Builder 运行在边缘侧**（不是 Console 的模块）
+   - Builder 是**独立服务**，部署在 UAV 边缘设备上
+   - 提供 BS 架构，可直接浏览器访问
+   - **可以独立运行**，不依赖 Console
+
+2. **Console 和 Builder 可以集成**
+   - Console **可以内置** Builder 功能
+   - 两者可以**协同工作**，也可以**独立使用**
+   - 用户可以选择在地面端（Console）或边缘端（Builder）开发
+
+3. **配置解释执行**（不是代码编译）
+   - 无论 Builder 还是 Console，都生成 JSON 配置
+   - SDK FlowExecutor 解释执行配置
+   - 无需编译、在线编辑即时生效
+
+4. **三种开发方式并存**
+   - **Builder**（边缘侧）：快速可视化开发
+   - **Console**（地面端）：集群管理和开发
+   - **SDK**（纯代码）：深度定制和算法研究
 
 1. **Builder 是 Console 的模块**（不是独立产品）
 2. **配置解释执行**（不是代码编译）
