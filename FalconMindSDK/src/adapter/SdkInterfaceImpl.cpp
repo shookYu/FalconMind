@@ -447,6 +447,98 @@ private:
     int nextMissionId_;
 };
 
+
+//==============================================================================
+// Detection Service Adapter
+//==============================================================================
+
+class DetectionServiceAdapter : public IDetectionService {
+public:
+    DetectionServiceAdapter() : isRunning_(false), confidenceThreshold_(0.5f) {}
+    
+    bool initialize(const char* modelPath, const char* labelPath, float confidenceThreshold) override {
+        confidenceThreshold_ = confidenceThreshold;
+        std::cout << "[DetectionAdapter] Initialized with threshold: " << confidenceThreshold_ << std::endl;
+        return true;
+    }
+    
+    void setDetectionCallback(DetectionCallback callback) override {
+        detectionCallback_ = callback;
+    }
+    
+    bool startDetection(IFlightConnectionService* flightService) override {
+        if (isRunning_) return true;
+        flightService_ = flightService;
+        isRunning_ = true;
+        detectionThread_ = std::thread([this]() { detectionLoop(); });
+        std::cout << "[DetectionAdapter] Detection started" << std::endl;
+        return true;
+    }
+    
+    void stopDetection() override {
+        isRunning_ = false;
+        if (detectionThread_.joinable()) detectionThread_.join();
+    }
+    
+    bool isDetecting() const override { return isRunning_; }
+    
+    void setTargetClasses(const std::vector<const char*>& classes) override {
+        targetClasses_.clear();
+        for (const auto& cls : classes) targetClasses_.push_back(cls);
+    }
+    
+private:
+    void detectionLoop() {
+        while (isRunning_) {
+            // Simulation detection logic
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
+    
+    IFlightConnectionService* flightService_;
+    DetectionCallback detectionCallback_;
+    std::atomic<bool> isRunning_;
+    std::thread detectionThread_;
+    float confidenceThreshold_;
+    std::vector<std::string> targetClasses_;
+};
+
+//==============================================================================
+// Telemetry Service Adapter
+//==============================================================================
+
+class TelemetryServiceAdapter : public ITelemetryService {
+public:
+    TelemetryServiceAdapter() : publishIntervalMs_(1000) {}
+    
+    bool initialize(const char* brokerHost, int brokerPort, const char* uavId) override {
+        uavId_ = uavId ? uavId : "unknown";
+        std::cout << "[TelemetryAdapter] Initialized for UAV: " << uavId_ << std::endl;
+        return true;
+    }
+    
+    bool publishTelemetry(const TelemetryPacket& packet) override {
+        // Simulated publish
+        return true;
+    }
+    
+    bool publishDetection(const DetectionTarget& target) override {
+        // Simulated publish
+        return true;
+    }
+    
+    void setPublishInterval(int intervalMs) override {
+        publishIntervalMs_ = intervalMs;
+    }
+    
+    void stop() override {}
+    
+private:
+    int publishIntervalMs_;
+    std::string uavId_;
+};
+
+
 //==============================================================================
 // SDK 服务工厂实现
 //==============================================================================
@@ -466,6 +558,12 @@ public:
     }
     
     IDetectionService* createDetectionService() override {
+        return new DetectionServiceAdapter();
+    }
+    
+    ITelemetryService* createTelemetryService() override {
+        return new TelemetryServiceAdapter();
+    }
         // TODO: 实现检测服务适配器
         return nullptr;
     }
