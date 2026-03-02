@@ -12,38 +12,40 @@ export function useCesium() {
   const initViewer = (container: HTMLDivElement) => {
     if (globalViewer.value) return
     
-    // Configure Cesium Ion token
-    ;(window as any).Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1ZDI2Zi1hZjczLTRiZGMtYjA0Ny1hZjE3NDMzMzY2NzIiLCJpZCI6NTYwODUsImlhdCI6MTY5NjA0MjE3OH0.MmK0RXva9E8Z7aW3F9X7v3z9z9z9z9z9z9z9z9z9z9z'
+    // Configure Cesium Ion token (replace with your own token)
+    const Cesium = (window as any).Cesium
+    Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_TOKEN || ''
     
-    globalViewer.value = new (window as any).Cesium.Viewer(container, {
+    globalViewer.value = new Cesium.Viewer(container, {
       animation: false,
       timeline: false,
       baseLayerPicker: false,
-      geocoder: false,
-      homeButton: false,
+      geocoder: true,
+      homeButton: true,
       sceneModePicker: false,
       navigationHelpButton: false,
       fullscreenButton: false,
       
-      imageryProvider: new (window as any).Cesium.UrlTemplateImageryProvider({
+      // Use OpenStreetMap as base layer
+      imageryProvider: new Cesium.UrlTemplateImageryProvider({
         url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         subdomains: ['a', 'b', 'c'],
         maximumLevel: 18
       }),
       
-      terrainProvider: (window as any).Cesium.createWorldTerrain()
+      terrainProvider: Cesium.createWorldTerrain?.() || undefined
     })
     
-    // Configure camera
+    // Configure camera to a default location (Beijing)
     globalViewer.value.camera.flyTo({
-      destination: (window as any).Cesium.Cartesian3.fromDegrees(
+      destination: Cesium.Cartesian3.fromDegrees(
         116.4074,
         39.9042,
         10000
       ),
       orientation: {
         heading: 0.0,
-        pitch: -(window as any).Cesium.Math.PI_OVER_TWO + 0.5,
+        pitch: -Cesium.Math.PI_OVER_TWO + 0.5,
         roll: 0.0
       }
     })

@@ -22,22 +22,6 @@ onUnmounted(() => {
   destroyViewer()
 })
 </script>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useCesium } from '../../composables/useCesium'
-
-const cesiumContainer = ref<HTMLDivElement>()
-const { initViewer, destroyViewer } = useCesium()
-
-onMounted(() => {
-  if (cesiumContainer.value) {
-    initViewer(cesiumContainer.value)
-  }
-})
-
-onUnmounted(() => {
-  destroyViewer()
-})
-</script>
 
 <style scoped>
 .cesium-container {
