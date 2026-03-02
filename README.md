@@ -669,6 +669,36 @@ FalconMind/                          # 项目根目录
 
 ### 历史版本
 
+早期原型工具（~~FalconBuilder~~、FalconMindViewer）已归档删除，其功能已完全整合到 FalconMindConsole。
+
+### FalconMindBuilder（可视化编排模块）
+
+**FalconMindBuilder** 是 FalconMindConsole 的内置可视化编排模块，提供零代码/低代码的无人机业务开发能力。
+
+**核心特性：**
+- 🎨 **可视化编排**：拖拽式任务流程设计
+- 📋 **配置驱动**：JSON/YAML 配置，无需编译
+- 🚀 **即时生效**：在线编辑，实时部署
+- 🧩 **模板系统**：丰富的业务模板库
+
+**文档资源：**
+- [📖 完整设计文档](./FalconMindBuilder/Doc/) - 包含架构设计、可行性分析、技术细节
+- [🚀 快速开始](./FalconMindBuilder/Doc/04_QuickStart.md) - 5分钟上手教程
+
+**架构定位：**
+```
+FalconMindConsole (地面站)
+├── FalconMindBuilder (可视化编排模块) ← 本文档
+│   ├── 画布编辑器 (Vue3 + Vue-Flow)
+│   ├── 属性面板 (表单配置)
+│   └── 实时预览 (Cesium)
+└── Console Backend (FastAPI)
+        │
+        ▼ MQTT/HTTP
+NodeAgent (边缘代理)
+└── SDK FlowExecutor (配置解释执行)
+```
+
 早期原型工具（FalconMindBuilder、FalconMindViewer）已归档删除，其功能已完全整合到 FalconMindConsole。
 
 ---
