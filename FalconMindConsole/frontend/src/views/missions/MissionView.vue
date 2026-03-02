@@ -12,9 +12,12 @@
         </el-radio-group>
       </div>
       
-      <el-button type="primary" :icon="Plus" @click="createMission">
-        新建任务
-      </el-button>
+      <div class="header-actions">
+        <el-button :icon="Map" @click="goToMapEditor">地图标绘</el-button>
+        <el-button type="primary" :icon="Plus" @click="createMission">
+          新建任务
+        </el-button>
+      </div>
     </div>
     
     <!-- Mission List -->
@@ -55,7 +58,7 @@
         </template>
       </el-table-column>
       
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="280" fixed="right">
         <template #default="{ row }">
           <el-button-group>
             <el-button
@@ -82,6 +85,14 @@
               @click="stopMission(row)"
             >
               停止
+            </el-button>
+            
+            <el-button
+              size="small"
+              :icon="MapLocation"
+              @click="editMissionArea(row)"
+            >
+              区域
             </el-button>
             
             <el-button
@@ -147,12 +158,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { Plus, CopyDocument } from '@element-plus/icons-vue';
+import { useRouter } from 'vue-router';
+import { Plus, CopyDocument, Map, MapLocation } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useMissionsStore } from '@/stores/missions';
 import { useUAVsStore } from '@/stores/uavs';
 import type { Mission, MissionStatus } from '@/types/mission';
 
+const router = useRouter();
 const missionsStore = useMissionsStore();
 const uavsStore = useUAVsStore();
 
@@ -211,6 +224,17 @@ const formatDateTime = (time?: string) => {
 
 const disabledDate = (date: Date) => {
   return date < new Date();
+};
+
+const goToMapEditor = () => {
+  router.push('/missions/map');
+};
+
+const editMissionArea = (mission: Mission) => {
+  router.push({
+    path: '/missions/map',
+    query: { missionId: mission.id }
+  });
 };
 
 const createMission = () => {
@@ -321,6 +345,11 @@ onMounted(() => {
     h2 {
       margin: 0;
     }
+  }
+  
+  .header-actions {
+    display: flex;
+    gap: 10px;
   }
 }
 

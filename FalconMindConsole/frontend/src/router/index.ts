@@ -35,6 +35,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '任务管理' }
       },
       {
+        path: 'missions/map',
+        name: 'MissionMap',
+        component: () => import('../views/missions/MissionMapView.vue'),
+        meta: { title: '任务地图' }
+      },
+      {
         path: 'uavs',
         name: 'UAVs',
         component: () => import('../views/uavs/UAVView.vue'),
