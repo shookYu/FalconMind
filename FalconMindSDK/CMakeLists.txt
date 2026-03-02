@@ -1,16 +1,28 @@
 cmake_minimum_required(VERSION 3.16)
-project(FalconMindSDK LANGUAGES CXX)
+project(FalconMindSDK LANGUAGES CXX VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Build options
 option(FALCONMINDSDK_BUILD_TESTS "Build FalconMindSDK test/demo programs" ON)
 option(FALCONMINDSDK_BUILD_PYTHON "Build FalconMindSDK Python bindings" ON)
+option(FALCONMINDSDK_BUILD_NODEAGENT "Build NodeAgent (unified with SDK)" ON)
+option(FALCONMINDSDK_BUILD_INTERFACE_ADAPTER "Build SDK interface adapter for NodeAgent" ON)
 
-# 检测是否为交叉编译
+# Inference backends
+option(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND "Build with ONNXRuntime inference backend" OFF)
+option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with RKNN inference backend (RK3588/RK3576/RV1126B)" ON)
+option(FALCONMINDSDK_BUILD_TENSORRT_BACKEND "Build with TensorRT inference backend (requires CUDA)" OFF)
+option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
+
+# Offline build mode - skip network downloads
+option(FALCONMINDSDK_OFFLINE_BUILD "Enable offline build mode (use local dependencies only)" OFF)
+
+# Cross-compilation detection
 if(CMAKE_CROSSCOMPILING AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
     set(FALCONMINDSDK_CROSS_COMPILE_ARM64 TRUE)
-    message(STATUS "检测到arm64交叉编译模式")
+    message(STATUS "Detected ARM64 cross-compilation mode")
 else()
     set(FALCONMINDSDK_CROSS_COMPILE_ARM64 FALSE)
 endif()
@@ -27,77 +39,98 @@ if(FALCONMINDSDK_BUILD_TESTS)
     endif()
 endif()
 
-# 推理后端：仅支持 RKNN（RK3588/RK3576/RV1126B 平台）
-option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with RKNN inference backend (requires RKNN-Toolkit2/board lib)" ON)
-option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
-
-# 设置第三方依赖库安装目录
-option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with RKNN inference backend (requires RKNN-Toolkit2/board lib)" ON)
-option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
-option(FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND "Build with real ONNXRuntime inference backend (requires ONNXRuntime)" OFF)
-option(FALCONMINDSDK_BUILD_RKNN_BACKEND "Build with real RKNN inference backend (requires RKNN-Toolkit2/board lib)" OFF)
-option(FALCONMINDSDK_BUILD_TENSORRT_BACKEND "Build with real TensorRT inference backend (requires TensorRT+CUDA)" OFF)
-option(FALCONMINDSDK_BUILD_ROS2 "Build with ROS2 integration (requires ROS2 Humble/Iron/Jazzy)" OFF)
-
-# 设置第三方依赖库安装目录
-set(FALCONMINDSDK_DEPEND_INSTALL_PREFIX "3rd/install/x86" CACHE STRING "依赖库安装目录 (3rd/install/x86 或 3rd/install/arm64)")
+# Set third-party dependency install directory
+set(FALCONMINDSDK_DEPEND_INSTALL_PREFIX "3rd/install/x86" CACHE STRING "Dependency install directory (3rd/install/x86 or 3rd/install/arm64)")
 set(DEPEND_INSTALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/${FALCONMINDSDK_DEPEND_INSTALL_PREFIX})
 
-# 交叉编译时跳过Python绑定（嵌入式目标通常不需要）
+# Skip Python bindings for cross-compilation
 if(FALCONMINDSDK_CROSS_COMPILE_ARM64)
     set(FALCONMINDSDK_BUILD_PYTHON OFF)
-    message(STATUS "arm64交叉编译模式：禁用Python绑定")
+    message(STATUS "ARM64 cross-compilation: Python bindings disabled")
     
-    # 对于arm64交叉编译，使用本地3rd/install/arm64/include中的头文件
+    # Use local ARM64 headers
     set(ARM64_DEPEND_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/3rd/install/arm64/include")
-    message(STATUS "arm64依赖头文件路径: ${ARM64_DEPEND_INCLUDE}")
+    message(STATUS "ARM64 dependency headers: ${ARM64_DEPEND_INCLUDE}")
 endif()
 
-# 查找nlohmann/json库（交叉编译时跳过系统查找，直接使用本地头文件）
+# ============================================================================
+# Dependencies - nlohmann/json
+# ============================================================================
 if(FALCONMINDSDK_CROSS_COMPILE_ARM64)
-    # 交叉编译模式：使用本地3rd/install/arm64/include中的nlohmann/json
+    # Cross-compilation: use local headers
     set(nlohmann_json_FOUND TRUE)
     set(nlohmann_json_INCLUDE_DIR "${ARM64_DEPEND_INCLUDE}")
-    message(STATUS "nlohmann/json: 使用本地arm64头文件 (${ARM64_DEPEND_INCLUDE}/nlohmann)")
+    message(STATUS "nlohmann/json: Using local ARM64 headers")
+elseif(FALCONMINDSDK_OFFLINE_BUILD)
+    # Offline build: check local directories only
+    find_package(nlohmann_json QUIET PATHS ${DEPEND_INSTALL_ROOT} NO_DEFAULT_PATH)
+    if(NOT nlohmann_json_FOUND)
+        # Check bundled headers
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rd/json/single_include/nlohmann/json.hpp")
+            set(nlohmann_json_FOUND TRUE)
+            set(nlohmann_json_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rd/json/single_include")
+            message(STATUS "nlohmann/json: Using bundled headers")
+        else()
+            message(FATAL_ERROR "Offline build enabled but nlohmann/json not found. Please install to ${DEPEND_INSTALL_ROOT} or add to 3rd/json/")
+        endif()
+    endif()
 else()
-    # 本地编译模式：优先使用系统安装的版本
+    # Online build: try system first, then FetchContent
     find_package(nlohmann_json QUIET)
     if(NOT nlohmann_json_FOUND)
-        # 使用FetchContent下载到3rd目录
         include(FetchContent)
         FetchContent_Declare(
             json
             GIT_REPOSITORY https://github.com/nlohmann/json.git
-            GIT_TAG v3.11.2
+            GIT_TAG v3.11.3
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(json)
         set(nlohmann_json_FOUND TRUE)
-        message(STATUS "nlohmann/json: Built from source (cached in ${CMAKE_CURRENT_SOURCE_DIR}/3rd/json-src)")
+        message(STATUS "nlohmann/json: Built from source")
     else()
         message(STATUS "nlohmann/json: Using system installation")
     endif()
 endif()
 
-# 查找cpp-httplib库（优先使用系统安装的版本）
-find_package(httplib QUIET)
-if(NOT httplib_FOUND)
-    # 使用FetchContent下载到3rd目录（会自动缓存，不会重复下载）
-    include(FetchContent)
-    FetchContent_Declare(
-        httplib
-        GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-        GIT_TAG v0.14.3
-        GIT_SHALLOW TRUE  # 只下载最新提交，不下载完整历史，加快下载速度
-    )
-    # FetchContent会自动检查缓存，如果3rd目录已存在则不会重新下载
-    FetchContent_MakeAvailable(httplib)
-    set(httplib_FOUND TRUE)
-    message(STATUS "cpp-httplib: Using FetchContent (cached in ${CMAKE_CURRENT_SOURCE_DIR}/3rd/httplib-src)")
+# ============================================================================
+# Dependencies - cpp-httplib
+# ============================================================================
+if(FALCONMINDSDK_OFFLINE_BUILD)
+    find_package(httplib QUIET PATHS ${DEPEND_INSTALL_ROOT} NO_DEFAULT_PATH)
+    if(NOT httplib_FOUND)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rd/cpp-httplib/httplib.h")
+            add_library(httplib::httplib INTERFACE IMPORTED)
+            set_target_properties(httplib::httplib PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/3rd/cpp-httplib"
+            )
+            set(httplib_FOUND TRUE)
+            message(STATUS "cpp-httplib: Using bundled headers")
+        else()
+            message(FATAL_ERROR "Offline build enabled but cpp-httplib not found.")
+        endif()
+    endif()
 else()
-    message(STATUS "cpp-httplib: Using system installation")
+    find_package(httplib QUIET)
+    if(NOT httplib_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(
+            httplib
+            GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+            GIT_TAG v0.14.3
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(httplib)
+        set(httplib_FOUND TRUE)
+        message(STATUS "cpp-httplib: Built from source")
+    else()
+        message(STATUS "cpp-httplib: Using system installation")
+    endif()
 endif()
 
+# ============================================================================
+# Main library
+# ============================================================================
 add_library(falconmind_sdk
     src/core/Pipeline.cpp
     src/core/Node.cpp
@@ -109,6 +142,7 @@ add_library(falconmind_sdk
     src/c_api/falconmind_sdk_c_api.cpp
     src/flight/FlightConnectionService.cpp
     src/flight/FlightNodes.cpp
+    src/flight/GeofenceMonitorNode.cpp
     src/sensors/CameraSourceNode.cpp
     src/sensors/LidarSourceNode.cpp
     src/sensors/ImuSourceNode.cpp
@@ -118,21 +152,16 @@ add_library(falconmind_sdk
     src/perception/PerceptionPluginManager.cpp
     src/perception/RknnDetectorBackend.cpp
     src/perception/EnvironmentDetectionNode.cpp
-    src/perception/PerceptionPluginManager.cpp
     src/perception/OnnxRuntimeDetectorBackend.cpp
-    src/perception/RknnDetectorBackend.cpp
     # src/perception/TensorRtDetectorBackend.cpp  # FIXME: requires CUDA
-    src/perception/EnvironmentDetectionNode.cpp
     src/perception/LowLightAdaptationNode.cpp
-    # src/perception/VisualSlamNode.cpp  # FIXME: requires VINS-Fusion
     src/perception/LidarSlamNode.cpp
-
     src/perception/DetectorConfigLoader.cpp
     src/perception/DetectionResultPacket.cpp
     src/perception/YoloPrePostProcess.cpp
     src/perception/SimpleTrackerBackend.cpp
     src/perception/SortTrackerBackend.cpp
-    # # src/perception/VisualSlamNode.cpp  # FIXME: requires VINS-Fusion  # FIXME: header issues
+    # src/perception/VisualSlamNode.cpp  # FIXME: requires VINS-Fusion
     src/perception/SlamServiceClientFromFile.cpp
     src/cluster/ClusterStateSourceNode.cpp
     src/mission/BehaviorTree.cpp
@@ -145,7 +174,6 @@ add_library(falconmind_sdk
     src/high_level/MissionPipeline.cpp
     src/high_level/FlightPipeline.cpp
     src/high_level/MavlinkClient.cpp
-    src/flight/GeofenceMonitorNode.cpp
 
     # Plugin system
     src/plugin/PluginManager.cpp
@@ -153,14 +181,14 @@ add_library(falconmind_sdk
     src/plugin/BuiltinPlugins.cpp
 )
 
-# 为Python绑定添加-fPIC编译选项（Position Independent Code）
+# PIC for Python bindings
 if(FALCONMINDSDK_BUILD_PYTHON)
     set_target_properties(falconmind_sdk PROPERTIES
         POSITION_INDEPENDENT_CODE ON
     )
 endif()
 
-# ROS2集成
+# ROS2 integration
 if(FALCONMINDSDK_BUILD_ROS2)
     find_package(rclcpp QUIET)
     find_package(geometry_msgs QUIET)
@@ -188,53 +216,60 @@ target_include_directories(falconmind_sdk
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# 链接nlohmann/json库
+# Link nlohmann/json
 if(nlohmann_json_FOUND)
-    if(FALCONMINDSDK_CROSS_COMPILE_ARM64)
-        # 交叉编译模式：直接添加头文件路径（nlohmann/json是头文件库）
+    if(FALCONMINDSDK_CROSS_COMPILE_ARM64 OR FALCONMINDSDK_OFFLINE_BUILD)
         target_include_directories(falconmind_sdk PUBLIC "${nlohmann_json_INCLUDE_DIR}")
     else()
-        # 本地编译模式：使用CMake包
         target_link_libraries(falconmind_sdk PUBLIC nlohmann_json::nlohmann_json)
     endif()
 endif()
 
-# 链接cpp-httplib库（仅用于FlowExecutor的HTTP功能）
+# Link cpp-httplib
 if(httplib_FOUND)
-    target_link_libraries(falconmind_sdk PRIVATE httplib::httplib)
+    if(FALCONMINDSDK_OFFLINE_BUILD AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rd/cpp-httplib/httplib.h")
+        target_include_directories(falconmind_sdk PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rd/cpp-httplib")
+    else()
+        target_link_libraries(falconmind_sdk PRIVATE httplib::httplib)
+    endif()
     if(NOT FALCONMINDSDK_CROSS_COMPILE_ARM64)
-        # 交叉编译模式跳过openssl（嵌入式设备通常不需要HTTPS）
         target_compile_definitions(falconmind_sdk PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
     endif()
 endif()
-# RKNN 推理后端配置（RK3588/RK3576/RV1126B 平台）
+
+# RKNN backend
 if(FALCONMINDSDK_BUILD_RKNN_BACKEND)
-    set(RKNN_SDK_ROOT "$ENV{RKNN_SDK_ROOT}" CACHE PATH "RKNN SDK root (include/ with rknn_api.h, lib/ or runtime/.../ with librknnrt.so)")
+    set(RKNN_SDK_ROOT "$ENV{RKNN_SDK_ROOT}" CACHE PATH "RKNN SDK root")
     if(RKNN_SDK_ROOT)
         set(RKNN_SEARCH_PATHS "${RKNN_SDK_ROOT}")
     else()
-        set(RKNN_SEARCH_PATHS "/usr/local" "/opt/rknn")
+        set(RKNN_SEARCH_PATHS "/usr/local" "/opt/rknn" "${DEPEND_INSTALL_ROOT}")
     endif()
     find_path(RKNN_INCLUDE_DIR
         NAMES rknn_api.h
         PATH_SUFFIXES include
         PATHS ${RKNN_SEARCH_PATHS}
+        NO_DEFAULT_PATH
     )
     find_library(RKNN_LIBRARY
         NAMES rknnrt
-        PATH_SUFFIXES lib lib64 aarch64 armhf runtime/Linux/librknn_api/aarch64 runtime/Linux/librknn_api/armhf
+        PATH_SUFFIXES lib lib64 aarch64
         PATHS ${RKNN_SEARCH_PATHS}
+        NO_DEFAULT_PATH
     )
     if(RKNN_INCLUDE_DIR AND RKNN_LIBRARY)
         target_include_directories(falconmind_sdk PRIVATE "${RKNN_INCLUDE_DIR}")
         target_link_libraries(falconmind_sdk PRIVATE "${RKNN_LIBRARY}")
         target_compile_definitions(falconmind_sdk PRIVATE FALCONMINDSDK_RKNN_BACKEND_ENABLED=1)
-        message(STATUS "FalconMindSDK: RKNN backend enabled and linked: ${RKNN_LIBRARY}")
+        message(STATUS "RKNN backend enabled: ${RKNN_LIBRARY}")
     else()
-        message(WARNING "RKNN not found (set RKNN_SDK_ROOT to SDK root with include/rknn_api.h and librknnrt.so). RknnDetectorBackend will remain stub.")
+        message(WARNING "RKNN not found. Set RKNN_SDK_ROOT or install to ${DEPEND_INSTALL_ROOT}")
     endif()
 endif()
 
+# ============================================================================
+# Test executables
+# ============================================================================
 if(FALCONMINDSDK_BUILD_TESTS)
     add_executable(falconmind_sdk_demo
         demo/pipeline_test_main.cpp
@@ -324,13 +359,12 @@ if(FALCONMINDSDK_BUILD_TESTS)
     )
     target_link_libraries(falconmind_flow_executor_performance_tests PRIVATE falconmind_sdk)
     
-    # Performance benchmark executable (Stage 1)
     add_executable(test_performance_benchmark
         tests/test_performance_benchmark.cpp
     )
     target_link_libraries(test_performance_benchmark PRIVATE falconmind_sdk)
 
-    # CTest: register unit/integration tests (excludes long-running performance/benchmark)
+    # CTest registration
     add_test(NAME falconmind_sdk_core_tests COMMAND falconmind_sdk_core_tests)
     add_test(NAME falconmind_flow_executor_tests COMMAND falconmind_flow_executor_tests)
     add_test(NAME falconmind_node_factory_tests COMMAND falconmind_node_factory_tests)
@@ -341,108 +375,117 @@ if(FALCONMINDSDK_BUILD_TESTS)
     add_test(NAME falconmind_flow_executor_e2e_tests COMMAND falconmind_flow_executor_e2e_tests)
 endif()
 
-# Python bindings using pybind11
+# ============================================================================
+# Python bindings
+# ============================================================================
 if(FALCONMINDSDK_BUILD_PYTHON AND NOT FALCONMINDSDK_CROSS_COMPILE_ARM64)
-    find_package(pybind11 QUIET)
-    if(NOT pybind11_FOUND)
-        # Download pybind11 if not found
-        include(FetchContent)
-        FetchContent_Declare(
-            pybind11
-            GIT_REPOSITORY https://github.com/pybind/pybind11.git
-            GIT_TAG v2.11.1
-            GIT_SHALLOW TRUE
-        )
-        FetchContent_MakeAvailable(pybind11)
-        message(STATUS "pybind11: Using FetchContent (cached in ${CMAKE_CURRENT_SOURCE_DIR}/3rd/pybind11-src)")
+    if(FALCONMINDSDK_OFFLINE_BUILD)
+        find_package(pybind11 QUIET PATHS ${DEPEND_INSTALL_ROOT} NO_DEFAULT_PATH)
+        if(NOT pybind11_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rd/pybind11/include")
+            add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd/pybind11)
+            set(pybind11_FOUND TRUE)
+            message(STATUS "pybind11: Using bundled")
+        endif()
     else()
-        message(STATUS "pybind11: Using system installation")
+        find_package(pybind11 QUIET)
+        if(NOT pybind11_FOUND)
+            include(FetchContent)
+            FetchContent_Declare(
+                pybind11
+                GIT_REPOSITORY https://github.com/pybind/pybind11.git
+                GIT_TAG v2.11.1
+                GIT_SHALLOW TRUE
+            )
+            FetchContent_MakeAvailable(pybind11)
+            message(STATUS "pybind11: Using FetchContent")
+        else()
+            message(STATUS "pybind11: Using system installation")
+        endif()
     endif()
-
-    # Find Python
-    find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
     
-    # Python module
-    pybind11_add_module(falconmind_sdk_py
-        python/falconmind_sdk.cpp
-    )
-    
-    target_link_libraries(falconmind_sdk_py PRIVATE falconmind_sdk)
-    
-    # Set output directory for Python module
-    set_target_properties(falconmind_sdk_py PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
-        OUTPUT_NAME falconmind_sdk
-    )
-    
-    message(STATUS "Python bindings will be installed to: ${CMAKE_CURRENT_SOURCE_DIR}/python")
+    if(pybind11_FOUND)
+        find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+        
+        pybind11_add_module(falconmind_sdk_py
+            python/falconmind_sdk.cpp
+        )
+        
+        target_link_libraries(falconmind_sdk_py PRIVATE falconmind_sdk)
+        
+        set_target_properties(falconmind_sdk_py PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
+            OUTPUT_NAME falconmind_sdk
+        )
+        
+        message(STATUS "Python bindings will be installed to: ${CMAKE_CURRENT_SOURCE_DIR}/python")
+    endif()
 elseif(FALCONMINDSDK_CROSS_COMPILE_ARM64)
-    message(STATUS "Python bindings: 跳过 (arm64交叉编译模式)")
+    message(STATUS "Python bindings: Skipped (ARM64 cross-compilation)")
 endif()
 
-# =============================================================================
-# 安装配置 - 支持x86和arm64两个平台
-# =============================================================================
-# 使用方法:
-#   x86: cmake .. -DFALCONMINDSDK_INSTALL_PREFIX=install/x86 && make install
-#   arm64: cmake .. -DCMAKE_TOOLCHAIN_FILE=../toolchain/aarch64-linux-gnu.cmake -DFALCONMINDSDK_INSTALL_PREFIX=install/arm64 && make install
-# =============================================================================
-
-set(FALCONMINDSDK_INSTALL_PREFIX "install/x86" CACHE STRING "安装目录前缀 (install/x86 或 install/arm64)")
-
-# 安装根目录
+# ============================================================================
+# Installation
+# ============================================================================
+set(FALCONMINDSDK_INSTALL_PREFIX "install/x86" CACHE STRING "Installation prefix (install/x86 or install/arm64)")
 set(INSTALL_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/${FALCONMINDSDK_INSTALL_PREFIX})
-
-# 库文件安装目录
 set(INSTALL_LIB_DIR ${INSTALL_ROOT}/lib)
-# 头文件安装目录
 set(INSTALL_INCLUDE_DIR ${INSTALL_ROOT}/include)
 
-# 安装库文件
 install(TARGETS falconmind_sdk
     ARCHIVE DESTINATION ${INSTALL_LIB_DIR}
     LIBRARY DESTINATION ${INSTALL_LIB_DIR}
 )
 
-# 安装头文件
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
     DESTINATION ${INSTALL_INCLUDE_DIR}
     FILES_MATCHING PATTERN "*.h"
 )
 
 message(STATUS "")
-message(STATUS "=== FalconMindSDK 安装配置 ===")
-message(STATUS "  安装前缀: ${FALCONMINDSDK_INSTALL_PREFIX}")
-message(STATUS "  库文件目录: ${INSTALL_LIB_DIR}")
-message(STATUS "  头文件目录: ${INSTALL_INCLUDE_DIR}")
-message(STATUS "  执行安装: make install")
+message(STATUS "=== FalconMindSDK Installation ===")
+message(STATUS "  Install prefix: ${FALCONMINDSDK_INSTALL_PREFIX}")
+message(STATUS "  Library directory: ${INSTALL_LIB_DIR}")
+message(STATUS "  Include directory: ${INSTALL_INCLUDE_DIR}")
+message(STATUS "  Run: make install")
 message(STATUS "")
 
-# =============================================================================
-# NodeAgent集成 (作为SDK子目录统一编译)
-# =============================================================================
-option(FALCONMINDSDK_BUILD_NODEAGENT "Build NodeAgent (unified with SDK)" ON)
-
+# ============================================================================
+# NodeAgent integration
+# ============================================================================
 if(FALCONMINDSDK_BUILD_NODEAGENT)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/NodeAgent/CMakeLists.txt")
-        message(STATUS "NodeAgent: 集成编译")
+        message(STATUS "NodeAgent: Integrated build")
         add_subdirectory(NodeAgent)
     else()
-        message(WARNING "NodeAgent目录不存在: ${CMAKE_CURRENT_SOURCE_DIR}/NodeAgent")
+        message(WARNING "NodeAgent directory not found: ${CMAKE_CURRENT_SOURCE_DIR}/NodeAgent")
     endif()
 endif()
 
-# =============================================================================
-# SDK Interface Adapter (用于 NodeAgent 解耦)
-# =============================================================================
-# 编译 SDK 接口适配器为共享库，供 NodeAgent 运行时动态加载
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/adapter/CMakeLists.txt)
+# ============================================================================
+# SDK Interface Adapter (for NodeAgent decoupling)
+# ============================================================================
+if(FALCONMINDSDK_BUILD_INTERFACE_ADAPTER)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/adapter/CMakeLists.txt")
+        include(${CMAKE_CURRENT_SOURCE_DIR}/src/adapter/CMakeLists.txt)
+    else()
+        message(WARNING "SDK adapter not found: ${CMAKE_CURRENT_SOURCE_DIR}/src/adapter/")
+    endif()
+endif()
 
-# 打印配置摘要
+# ============================================================================
+# Build summary
+# ============================================================================
 message(STATUS "")
-message(STATUS "FalconMindSDK 配置摘要:")
-message(STATUS "  版本: ${PROJECT_VERSION}")
-message(STATUS "  构建类型: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  安装前缀: ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "  接口适配器: ${FALCONMINDSDK_BUILD_INTERFACE_ADAPTER}")
+message(STATUS "=== FalconMindSDK Build Configuration ===")
+message(STATUS "  Version: ${PROJECT_VERSION}")
+message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  Cross-compile ARM64: ${FALCONMINDSDK_CROSS_COMPILE_ARM64}")
+message(STATUS "  Offline build: ${FALCONMINDSDK_OFFLINE_BUILD}")
+message(STATUS "  Tests: ${FALCONMINDSDK_BUILD_TESTS}")
+message(STATUS "  Python bindings: ${FALCONMINDSDK_BUILD_PYTHON}")
+message(STATUS "  NodeAgent: ${FALCONMINDSDK_BUILD_NODEAGENT}")
+message(STATUS "  Interface adapter: ${FALCONMINDSDK_BUILD_INTERFACE_ADAPTER}")
+message(STATUS "  RKNN backend: ${FALCONMINDSDK_BUILD_RKNN_BACKEND}")
+message(STATUS "  ROS2: ${FALCONMINDSDK_BUILD_ROS2}")
 message(STATUS "")
