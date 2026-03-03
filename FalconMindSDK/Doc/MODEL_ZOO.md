@@ -2,6 +2,88 @@
 
 > 与 `demo/detectors_demo.yaml` 及 `README_DEPENDENCIES.md` 配合使用。  
 > **更新日期**：2025-02-06  
+> **主平台**：RK1126B、RK3576、RK3588，推理以 **RKNN** 与 **.rknn** 模型为主。  
+> **注意**：本项目专注于 Rockchip 平台，仅支持 RKNN 推理后端，不再支持 ONNX Runtime 和 TensorRT。
+
+## 1. 配置文件中的路径
+
+`detectors_demo.yaml` 使用占位路径。**仅支持 RKNN 模型**：
+
+- **RKNN（唯一支持）**：`model_path: /opt/models/yolo_v26_640.rknn`、`label_path: /opt/models/coco80.txt`
+
+请将上述路径改为本机或板端的**实际路径**，或按下方方式准备模型后再修改 yaml。
+
+## 2. RKNN 模型（主平台：RK1126B / RK3576 / RK3588）
+
+- 使用 **RKNN-Toolkit2** 将原始模型（如 PyTorch）转为 `.rknn`，并按目标芯片选择 RK1126B/RK3576/RK3588 的量化与配置。
+- 文档与工具见 [Rockchip RKNN Toolkit2](https://github.com/rockchip-linux/rknn-toolkit2)。
+- 转换得到 `yolo_xxx.rknn` 后，在 yaml 中设置 `model_path` 为该文件路径；`input_width`/`input_height`、`score_threshold`/`nms_threshold` 与模型及 SDK 后处理一致。
+
+## 3. 模型转换流程
+
+### 3.1 从 PyTorch/ONNX 转为 RKNN
+
+虽然 RKNN-Toolkit2 接受 ONNX 作为输入格式，但 **最终部署必须使用 .rknn 格式**：
+
+1. **导出 ONNX**（作为中间格式）：
+   - [Ultralytics](https://github.com/ultralytics/ultralytics)：`yolo export model=yolov8n.pt format=onnx imgsz=640`
+   - 得到 `yolov8n.onnx`
+
+2. **转换为 RKNN**（必须步骤）：
+   ```bash
+   # 使用 RKNN-Toolkit2
+   python convert.py --input yolov8n.onnx --output yolov8n.rknn --target RK3588
+   ```
+
+3. **部署使用**：
+   - 将 `yolov8n.rknn` 放到板端 `/opt/models/`
+   - yaml 中配置 `model_path: /opt/models/yolov8n.rknn`
+
+### 3.2 放置目录建议
+
+统一放在同一目录，便于配置：
+
+```bash
+export MODELS_DIR=/opt/models   # 或 $HOME/models
+mkdir -p $MODELS_DIR
+# 将 yolo_xxx.rknn、coco80.txt 等放入 $MODELS_DIR
+```
+
+在 `detectors_demo.yaml` 中设置：
+
+```yaml
+model_path: /opt/models/yolov8n.rknn
+label_path: /opt/models/coco80.txt
+```
+
+### 3.3 类别标签文件（label_path）
+
+- **COCO 80 类**：可自行创建 `coco80.txt`，每行一个类别名（如 `person`、`car`、…），顺序与模型输出 class_id 一致。
+- 若模型使用其他类别集，请按相同格式编写对应 `label_path` 文件。
+
+## 4. 使用下载脚本（可选）
+
+若仓库提供 `scripts/download_models.sh`，可在 SDK 根目录执行：
+
+```bash
+./scripts/download_models.sh
+```
+
+脚本可将测试用模型导出到默认目录（如 `./models`），并提示在 `detectors_demo.yaml` 中填写的路径。**必须使用 RKNN-Toolkit2 将模型转为 .rknn 格式**后配置 `model_path`。
+
+## 5. 与 detectors_demo.yaml 的对应关系
+
+| yaml 字段       | 说明 |
+|-----------------|------|
+| `model_path`    | 模型文件绝对或相对路径（仅支持 .rknn） |
+| `label_path`    | 类别标签文件路径（可选） |
+| `input_width` / `input_height` | 与模型输入尺寸一致（如 640） |
+| `score_threshold` / `nms_threshold` | 与 SDK 后处理参数一致 |
+
+修改 yaml 后，重新运行 detector_config_demo 或使用该配置的 Pipeline 即可加载对应模型。
+
+> 与 `demo/detectors_demo.yaml` 及 `README_DEPENDENCIES.md` 配合使用。  
+> **更新日期**：2025-02-06  
 > **主平台**：RK1126B、RK3576、RK3588，推理以 **RKNN** 与 **.rknn** 模型为主。
 
 ## 1. 配置文件中的路径

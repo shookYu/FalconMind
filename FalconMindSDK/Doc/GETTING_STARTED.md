@@ -56,9 +56,8 @@ cd falconmind/FalconMindSDK
 sudo apt-get update
 sudo apt-get install -y build-essential cmake git
 
-# 安装 ONNX Runtime (x86 推理后端)
-pip3 install onnxruntime
-```
+# 安装 RKNN Toolkit2 (用于模型转换)
+# 参考: https://github.com/rockchip-linux/rknn-toolkit2
 
 ### 3. 编译 SDK
 
@@ -102,7 +101,7 @@ make -j4
 === 示例1: Builder模式创建感知流水线 ===
 ✅ 流水线创建成功
 [PerceptionPipeline] Starting with camera: 640x480 @ 30fps
-[PerceptionPipeline] Detector: yolov8n.onnx
+[PerceptionPipeline] Detector: yolov8n.rknn
 ✅ 流水线已启动
 ...
 ✅ 所有演示完成
@@ -119,7 +118,7 @@ int main() {
     // 创建流水线（链式配置）
     auto result = PerceptionPipeline::create()
         .withCamera(640, 480, 30)                    // 配置相机
-        .withDetector("yolov8n.onnx")                // 加载检测模型
+        .withDetector("yolov8n.rknn")                // 加载检测模型
         .withTracker(TrackerType::DEEPSORT)         // 启用跟踪
         .build();
     
@@ -168,14 +167,14 @@ int main() {
 ```cpp
 auto result = PerceptionPipeline::create()
     .withCamera(640, 480, 30)
-    .withDetector("model.onnx")
+    .withDetector("model.rknn")
     .withTracker(TrackerType::DEEPSORT)
     .build();
 ```
 
 **方式 2: 便捷函数**
 ```cpp
-auto result = createMinimalPipeline("model.onnx");
+auto result = createMinimalPipeline("model.rknn");
 ```
 
 **方式 3: Core API（底层控制）**
@@ -266,7 +265,7 @@ cd examples/15_detection_tracking/x86/build
 
 int main() {
     auto result = falconmind::sdk::high_level::createMinimalPipeline(
-        "yolov8n.onnx"
+        "yolov8n.rknn"
     );
     
     if (!result) {

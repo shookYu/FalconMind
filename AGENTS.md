@@ -195,11 +195,11 @@ FalconMindSDK/
 ## Backend CMake Options
 
 Enable optional inference backends:
-- `FALCONMINDSDK_BUILD_ONNXRUNTIME_BACKEND=ON`
-- `FALCONMINDSDK_BUILD_RKNN_BACKEND=ON`
-- `FALCONMINDSDK_BUILD_TENSORRT_BACKEND=ON`
-- `FALCONMINDSDK_BUILD_ROS2=ON`
+- `FALCONMINDSDK_BUILD_RKNN_BACKEND=ON` - RKNN backend for Rockchip NPU (default: ON)
+- `FALCONMINDSDK_BUILD_ROS2=ON` - ROS2 integration
 - `FALCONMINDSDK_ENABLE_COVERAGE=ON` (for coverage)
+
+## Installation Paths
 
 ## Installation Paths
 

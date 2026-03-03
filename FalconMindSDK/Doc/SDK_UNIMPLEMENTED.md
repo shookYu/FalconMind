@@ -11,9 +11,9 @@
 
 ### 1.1 现状
 
-- **接口与类型**：`IDetectorBackend`、`DetectorDescriptor`、`DetectionResult`、`ImageView` 等已定义，支持 RKNN/ONNX/TensorRT 等后端类型。
-- **平台与后端策略**：主平台为 **RK1126B / RK3576 / RK3588**，**主推理后端为 RKNN**。ONNXRuntime、TensorRT 暂不作为主路径，仅保留现有接口与 stub，不投入实现与验证。
-- **实现**：**RknnDetectorBackend** 仍为骨架（待实现真实 load/run）。OnnxRuntimeDetectorBackend、TensorRtDetectorBackend 保留现有实现或骨架，供非 RK 环境可选使用，**不作为主平台交付内容**。
+- **接口与类型**：`IDetectorBackend`、`DetectorDescriptor`、`DetectionResult`、`ImageView` 等已定义，仅支持 **RKNN** 后端。
+- **平台与后端策略**：主平台为 **RK1126B / RK3576 / RK3588**，**唯一推理后端为 RKNN**。ONNXRuntime、TensorRT 已移除支持。
+- **实现**：**RknnDetectorBackend** 已实现真实 load/run。OnnxRuntimeDetectorBackend、TensorRtDetectorBackend 已移除，不再支持。
 
 | 文件 | 现状 |
 |------|------|

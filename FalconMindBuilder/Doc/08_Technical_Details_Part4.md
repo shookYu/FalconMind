@@ -133,7 +133,7 @@ export const SearchMissionMapping = {
       condition: (config: MissionConfig) => 
         config.parameters?.detection?.enabled !== false,
       transform: (model: string) => ({
-        modelPath: `/models/${model}.onnx`,
+        modelPath: `/models/${model}.rknn`,
         backend: DetectorBackend.AUTO
       })
     },

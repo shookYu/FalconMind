@@ -70,7 +70,7 @@ cd FalconMindSDK/NodeAgent/build
 ```cpp
 auto result = PerceptionPipeline::create()
     .withCamera(640, 480, 30)
-    .withDetector("yolov8.onnx")
+    .withDetector("yolov8.rknn")
     .withTracker(TrackerType::DEEPSORT)
     .build();
 
