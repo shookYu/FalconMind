@@ -1,0 +1,33 @@
+{
+  "name": "昌平公园离线地图",
+  "version": "1.0.0",
+  "description": "Changping Park offline map tiles",
+  "center": {
+    "lat": 40.0768,
+    "lng": 116.3477
+  },
+  "bounds": {
+    "west": 116.3400,
+    "east": 116.3550,
+    "south": 40.0700,
+    "north": 40.0850
+  },
+  "minZoom": 12,
+  "maxZoom": 16,
+  "tileSize": 256,
+  "format": "png",
+  "sources": [
+    {
+      "name": "OpenStreetMap",
+      "folder": "osm",
+      "url": "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "attribution": "© OpenStreetMap contributors"
+    },
+    {
+      "name": "Satellite",
+      "folder": "satellite",
+      "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      "attribution": "© Esri"
+    }
+  ]
+}

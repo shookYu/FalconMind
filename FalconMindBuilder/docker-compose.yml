@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # FalconMindBuilder Backend
+  builder-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: falconmind-builder-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=FalconMindBuilder
+      - APP_VERSION=1.0.0
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite:///data/builder.db
+      - SDK_ENABLED=false
+      - SDK_PATH=/opt/falconmind/sdk
+      - CORS_ORIGINS=["http://localhost:5173", "http://localhost:8080"]
+      - MQTT_ENABLED=false
+      - MQTT_BROKER=mqtt
+      - MQTT_PORT=1883
+    volumes:
+      - builder-data:/data
+      # 如果需要连接真实 SDK，挂载 SDK 目录
+      # - /opt/falconmind/sdk:/opt/falconmind/sdk:ro
+    networks:
+      - builder-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MQTT Broker (optional, for NodeAgent communication)
+  mqtt:
+    image: eclipse-mosquitto:2.0.18
+    container_name: falconmind-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+      - mqtt-logs:/mosquitto/log
+    networks:
+      - builder-network
+    profiles:
+      - with-mqtt
+
+  # Frontend (optional, for production deployment)
+  builder-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: falconmind-builder-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - builder-backend
+    networks:
+      - builder-network
+    profiles:
+      - with-frontend
+
+volumes:
+  builder-data:
+    driver: local
+  mqtt-data:
+    driver: local
+  mqtt-logs:
+    driver: local
+
+networks:
+  builder-network:
+    driver: bridge

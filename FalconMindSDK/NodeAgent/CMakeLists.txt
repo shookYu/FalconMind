@@ -206,34 +206,7 @@ add_library(nodeagent
     # SDK 动态加载器（解耦关键）
     src/sdk/SdkLoader.cpp
 )
-    src/NodeAgent.cpp
-    src/UplinkClient.cpp
-    src/DownlinkClient.cpp
-    src/CommandHandler.cpp
-    src/MissionHandler.cpp
-    src/FlowHandler.cpp
-    src/MessageAck.cpp
-    src/MultiUavManager.cpp
-    src/MqttUplinkClient.cpp
-    src/MqttDownlinkClient.cpp
-    src/Logger.cpp
-    src/ErrorStatistics.cpp
-    src/ReconnectManager.cpp
-    src/LocalStore.cpp
-    src/OfflineAutonomyManager.cpp
-    src/SwarmPartitionManager.cpp
-    src/InterUavManager.cpp
-    src/StateMachine.cpp
-    src/ThreadManager.cpp
-    src/HeartbeatMonitor.cpp
-    src/RuleEngine.cpp
-    src/ConfigurationManager.cpp
-    src/MetricsCollector.cpp
-    src/AsyncLogger.cpp
-    src/DistributedTaskAllocator.cpp
-    src/CrossPartitionConflictResolver.cpp
-    src/PredictiveReconnector.cpp
-)
+
 
 
 target_include_directories(nodeagent
@@ -245,9 +218,6 @@ target_include_directories(nodeagent
 # 注意：NodeAgent 不链接任何 SDK 库
 # SDK 将在运行时通过 SdkLoader 动态加载
 # target_link_libraries(nodeagent PRIVATE falconmind_sdk)  # 已移除
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
 
 if(NODEAGENT_STANDALONE)
     target_include_directories(nodeagent PUBLIC ${FALCONMINDSDK_INCLUDE_DIR})
@@ -444,10 +414,6 @@ if(NODEAGENT_BUILD_TESTS)
 
     # 启用测试发现
     include(GoogleTest)
-    gtest_discover_tests(nodeagent_unit_tests)
-endif()
-
-
     # 启用测试发现
     include(GoogleTest)
     gtest_discover_tests(nodeagent_unit_tests)
