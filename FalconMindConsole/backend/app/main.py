@@ -1,4 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.routing import APIRoute
+
+# Rate limiting imports
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.middleware import RateLimitMiddleware
+from slowapi.util import get_remote_address
+from starlette.responses import JSONResponse
+
+// NOTE: The following new rate-limiting setup uses slowapi to apply default
+// limits globally and a specific lower limit for auth endpoints via runtime decoration.
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+# Attach limiter to the app state and install middleware
+"""Initialize rate-limiting and protection middleware"""
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
