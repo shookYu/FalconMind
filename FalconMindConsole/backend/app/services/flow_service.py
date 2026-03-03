@@ -196,3 +196,193 @@ class FlowService:
             "status": "queued",
             "message": "Flow execution queued"
         }
+
+
+    
+    def create_from_template(
+        self,
+        template_id: str,
+        name: str,
+        mission_id: Optional[str],
+        parameters: Dict[str, Any],
+        user_id: str
+    ) -> Flow:
+        """
+        Create flow from Builder template
+        
+        Args:
+            template_id: Template ID (basic_search, forest_fire_search, etc.)
+            name: Flow name
+            mission_id: Mission ID
+            parameters: Template parameters
+            user_id: Creator user ID
+            
+        Returns:
+            Created Flow instance
+        """
+        import uuid
+        
+        # Template definitions (from Builder)
+        templates = {
+            "basic_search": {
+                "nodes": [
+                    {
+                        "id": "trigger_1",
+                        "type": "trigger",
+                        "position": {"x": 100, "y": 100},
+                        "data": {"type": "mission_start", "label": "任务开始", "config": {}}
+                    },
+                    {
+                        "id": "action_1",
+                        "type": "action",
+                        "position": {"x": 300, "y": 100},
+                        "data": {
+                            "type": "search_area",
+                            "label": "搜索区域",
+                            "config": {
+                                "area": parameters.get("area", []),
+                                "altitude": parameters.get("altitude", 100),
+                                "speed": parameters.get("speed", 8),
+                                "pattern": parameters.get("pattern", "lawn_mower"),
+                                "detection_enabled": parameters.get("enableDetection", True)
+                            }
+                        }
+                    },
+                    {
+                        "id": "action_2",
+                        "type": "action",
+                        "position": {"x": 500, "y": 100},
+                        "data": {"type": "return_to_launch", "label": "返航", "config": {}}
+                    }
+                ],
+                "edges": [
+                    {"id": "edge_1", "source": "trigger_1", "target": "action_1"},
+                    {"id": "edge_2", "source": "action_1", "target": "action_2"}
+                ]
+            },
+            "forest_fire_search": {
+                "nodes": [
+                    {
+                        "id": "trigger_1",
+                        "type": "trigger",
+                        "position": {"x": 100, "y": 100},
+                        "data": {"type": "mission_start", "label": "任务开始", "config": {}}
+                    },
+                    {
+                        "id": "action_1",
+                        "type": "action",
+                        "position": {"x": 300, "y": 100},
+                        "data": {
+                            "type": "search_area",
+                            "label": "螺旋搜索",
+                            "config": {
+                                "area": parameters.get("area", []),
+                                "altitude": parameters.get("altitude", 150),
+                                "speed": parameters.get("speed", 10),
+                                "pattern": "spiral",
+                                "detection_enabled": True,
+                                "detection_classes": ["fire", "smoke"]
+                            }
+                        }
+                    },
+                    {
+                        "id": "condition_1",
+                        "type": "condition",
+                        "position": {"x": 500, "y": 100},
+                        "data": {
+                            "type": "target_detected",
+                            "label": "发现火情？",
+                            "config": {"target_classes": ["fire"], "confidence_threshold": 0.7}
+                        }
+                    },
+                    {
+                        "id": "action_2",
+                        "type": "action",
+                        "position": {"x": 700, "y": 50},
+                        "data": {"type": "take_photo", "label": "拍照记录", "config": {"count": 3}}
+                    },
+                    {
+                        "id": "action_3",
+                        "type": "action",
+                        "position": {"x": 700, "y": 150},
+                        "data": {"type": "hover", "label": "悬停观察", "config": {"duration_seconds": 30}}
+                    },
+                    {
+                        "id": "action_4",
+                        "type": "action",
+                        "position": {"x": 900, "y": 100},
+                        "data": {"type": "return_to_launch", "label": "返航", "config": {}}
+                    }
+                ],
+                "edges": [
+                    {"id": "edge_1", "source": "trigger_1", "target": "action_1"},
+                    {"id": "edge_2", "source": "action_1", "target": "condition_1"},
+                    {"id": "edge_3", "source": "condition_1", "target": "action_2", "label": "是"},
+                    {"id": "edge_4", "source": "condition_1", "target": "action_3", "label": "否"},
+                    {"id": "edge_5", "source": "action_2", "target": "action_4"},
+                    {"id": "edge_6", "source": "action_3", "target": "action_4"}
+                ]
+            },
+            "perimeter_patrol": {
+                "nodes": [
+                    {
+                        "id": "trigger_1",
+                        "type": "trigger",
+                        "position": {"x": 100, "y": 100},
+                        "data": {"type": "mission_start", "label": "任务开始", "config": {}}
+                    },
+                    {
+                        "id": "action_1",
+                        "type": "action",
+                        "position": {"x": 300, "y": 100},
+                        "data": {
+                            "type": "search_area",
+                            "label": "边界巡逻",
+                            "config": {
+                                "area": parameters.get("area", []),
+                                "altitude": parameters.get("altitude", 80),
+                                "speed": parameters.get("speed", 5),
+                                "pattern": "perimeter"
+                            }
+                        }
+                    },
+                    {
+                        "id": "action_2",
+                        "type": "action",
+                        "position": {"x": 500, "y": 100},
+                        "data": {"type": "return_to_launch", "label": "返航", "config": {}}
+                    }
+                ],
+                "edges": [
+                    {"id": "edge_1", "source": "trigger_1", "target": "action_1"},
+                    {"id": "edge_2", "source": "action_1", "target": "action_2"}
+                ]
+            }
+        }
+        
+        # Get template
+        template = templates.get(template_id)
+        if not template:
+            raise ValueError(f"Unknown template: {template_id}")
+        
+        # Create flow
+        flow = Flow(
+            name=name,
+            description=f"Created from template: {template_id}",
+            mission_id=mission_id,
+            created_by=user_id,
+            nodes=template["nodes"],
+            edges=template["edges"],
+            is_template=False,
+            template_id=template_id
+        )
+        
+        # Sync to legacy format
+        flow.flow_nodes = template["nodes"]
+        flow.flow_edges = template["edges"]
+        
+        self.db.add(flow)
+        self.db.commit()
+        self.db.refresh(flow)
+        
+        return flow

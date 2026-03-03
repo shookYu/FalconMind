@@ -199,3 +199,216 @@ def validate_flow(
     
     validation = service.validate_flow(flow)
     return validation
+
+
+
+
+# Template endpoints
+@router.get("/templates", response_model=List[dict])
+def get_flow_templates(
+    category: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get built-in flow templates (shared with Builder)
+    """
+    from app.utils.flow_converter import FlowConverter
+    
+    # Load templates from Builder's template store
+    templates = [
+        {
+            "id": "basic_search",
+            "name": "基础搜索",
+            "category": "search",
+            "description": "标准的区域搜索任务",
+            "icon": "🔍",
+            "complexity": "simple"
+        },
+        {
+            "id": "forest_fire_search", 
+            "name": "森林火灾搜索",
+            "category": "fire",
+            "description": "螺旋搜索+热成像检测",
+            "icon": "🔥",
+            "complexity": "medium"
+        },
+        {
+            "id": "perimeter_patrol",
+            "name": "周界巡逻",
+            "category": "patrol", 
+            "description": "沿区域边界巡逻监控",
+            "icon": "🛡️",
+            "complexity": "simple"
+        },
+        {
+            "id": "powerline_inspection",
+            "name": "电力巡检",
+            "category": "inspection",
+            "description": "电力线塔巡检",
+            "icon": "⚡",
+            "complexity": "medium"
+        },
+        {
+            "id": "rescue_search",
+            "name": "搜救任务",
+            "category": "rescue",
+            "description": "扇形搜索+热成像",
+            "icon": "🚁",
+            "complexity": "complex"
+        }
+    ]
+    
+    if category:
+        templates = [t for t in templates if t["category"] == category]
+    
+    return templates
+
+
+@router.post("/templates/{template_id}/instantiate", response_model=FlowResponse)
+def instantiate_template(
+    template_id: str,
+    name: str,
+    mission_id: Optional[str] = None,
+    parameters: Optional[dict] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create flow from template
+    """
+    from app.services.flow_service import FlowService
+    
+    service = FlowService(db)
+    flow = service.create_from_template(
+        template_id=template_id,
+        name=name,
+        mission_id=mission_id,
+        parameters=parameters or {},
+        user_id=current_user.id
+    )
+    
+    return flow.to_dict()
+
+
+@router.post("/{flow_id}/save-as-template")
+def save_as_template(
+    flow_id: str,
+    name: str,
+    description: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Save flow as custom template
+    """
+    service = FlowService(db)
+    
+    flow = service.get_flow(flow_id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Flow not found"
+        )
+    
+    if flow.created_by != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized"
+        )
+    
+    # Mark as template
+    flow.is_template = True
+    db.commit()
+    
+    return {
+        "status": "saved",
+        "template_id": str(flow.id),
+        "name": name,
+        "description": description
+    }
+
+
+# Batch deployment endpoints
+@router.post("/{flow_id}/batch-deploy")
+def batch_deploy_flow(
+    flow_id: str,
+    uav_ids: List[str],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Deploy flow to multiple UAVs
+    """
+    from app.services.flow_service import FlowService
+    
+    service = FlowService(db)
+    
+    flow = service.get_flow(flow_id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Flow not found"
+        )
+    
+    # Deploy to each UAV
+    results = []
+    for uav_id in uav_ids:
+        try:
+            result = service.execute_flow(flow_id, uav_id)
+            results.append({
+                "uav_id": uav_id,
+                "status": "success",
+                "result": result
+            })
+        except Exception as e:
+            results.append({
+                "uav_id": uav_id,
+                "status": "failed",
+                "error": str(e)
+            })
+    
+    return {
+        "flow_id": flow_id,
+        "total": len(uav_ids),
+        "successful": sum(1 for r in results if r["status"] == "success"),
+        "failed": sum(1 for r in results if r["status"] == "failed"),
+        "results": results
+    }
+
+
+@router.get("/{flow_id}/export")
+def export_flow(
+    flow_id: str,
+    format: str = "sdk",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Export flow to SDK format
+    """
+    service = FlowService(db)
+    
+    flow = service.get_flow(flow_id)
+    if not flow:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Flow not found"
+        )
+    
+    if flow.created_by != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized"
+        )
+    
+    if format == "sdk":
+        return flow.to_sdk_format()
+    elif format == "builder":
+        return flow.to_builder_format()
+    elif format == "console":
+        return flow.to_console_format()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported format: {format}"
+        )
