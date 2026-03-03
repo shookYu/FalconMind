@@ -10,37 +10,78 @@
       </div>
       
       <div class="header-center">
-        <el-button-group>
-          <el-button 
-            :icon="VideoPlay" 
-            type="success"
-            @click="startSimulation"
-            :disabled="isPlaying || waypoints.length === 0"
-          >
-            开始
-          </el-button>
-          <el-button 
-            :icon="VideoPause" 
-            @click="pauseSimulation"
-            :disabled="!isPlaying"
-          >
-            暂停
-          </el-button>
-          <el-button 
-            :icon="RefreshRight" 
-            @click="resetSimulation"
-          >
-            重置
-          </el-button>
-        </el-button-group>
+        <!-- 模式切换 -->
+        <el-radio-group v-model="previewMode" size="small">
+          <el-radio-button label="simulation">模拟预览</el-radio-button>
+          <el-radio-button label="realtime" :disabled="!selectedUavId">实时监控</el-radio-button>
+        </el-radio-group>
         
         <el-divider direction="vertical" />
         
-        <div class="speed-control">
-          <span>速度:</span>
-          <el-slider v-model="speed" :min="0.5" :max="5" :step="0.5" style="width: 100px" />
-          <span class="speed-value">{{ speed }}x</span>
-        </div>
+        <!-- 模拟控制 -->
+        <template v-if="previewMode === 'simulation'">
+          <el-button-group>
+            <el-button 
+              :icon="VideoPlay" 
+              type="success"
+              @click="startSimulation"
+              :disabled="isPlaying || waypoints.length === 0"
+            >
+              开始
+            </el-button>
+            <el-button 
+              :icon="VideoPause" 
+              @click="pauseSimulation"
+              :disabled="!isPlaying"
+            >
+              暂停
+            </el-button>
+            <el-button 
+              :icon="RefreshRight" 
+              @click="resetSimulation"
+            >
+              重置
+            </el-button>
+          </el-button-group>
+          
+          <el-divider direction="vertical" />
+          
+          <div class="speed-control">
+            <span>速度:</span>
+            <el-slider v-model="speed" :min="0.5" :max="5" :step="0.5" style="width: 100px" />
+            <span class="speed-value">{{ speed }}x</span>
+          </div>
+        </template>
+        
+        <!-- 实时模式控制 -->
+        <template v-else>
+          <el-select 
+            v-model="selectedUavId" 
+            placeholder="选择UAV" 
+            size="small"
+            style="width: 150px"
+            @change="onUavSelect"
+          >
+            <el-option
+              v-for="uav in onlineUavs"
+              :key="uav.id"
+              :label="uav.name"
+              :value="uav.id"
+            >
+              <span>{{ uav.name }}</span>
+              <el-tag size="small" :type="uav.status === 'online' ? 'success' : 'info'" style="margin-left: 8px">
+                {{ uav.status === 'online' ? '在线' : '忙碌' }}
+              </el-tag>
+            </el-option>
+          </el-select>
+          
+          <el-divider direction="vertical" />
+          
+          <el-tag :type="connectionStatus.type" effect="plain" size="small">
+            <el-icon v-if="connectionStatus.loading" class="is-loading"><Loading /></el-icon>
+            {{ connectionStatus.text }}
+          </el-tag>
+        </template>
         
         <el-divider direction="vertical" />
         
@@ -50,7 +91,12 @@
       </div>
       
       <div class="header-right">
-        <el-button type="primary" @click="deployFlow" :icon="Position">
+        <el-button 
+          type="primary" 
+          @click="showDeployDialog" 
+          :icon="Position"
+          :disabled="!canDeploy"
+        >
           部署任务
         </el-button>
       </div>
@@ -63,8 +109,10 @@
           :search-area="searchArea"
           :is-playing="isPlaying"
           :progress="progress"
+          :uav-id="selectedUavId"
+          :is-real-time-mode="previewMode === 'realtime'"
           @waypoint-reached="onWaypointReached"
-          @simulation-complete="onSimulationComplete"
+          @telemetry-update="onTelemetryUpdate"
         />
         
         <!-- 空状态提示 -->
@@ -81,27 +129,42 @@
       <aside class="status-panel">
         <UAVStatusPanel
           ref="statusPanelRef"
-          :telemetry="telemetry"
+          :telemetry="currentTelemetry"
           :status="simulationState"
           :overall-progress="progress"
           :current-waypoint="currentWaypointIndex + 1"
           :total-waypoints="waypoints.length"
           :flight-distance="flightDistance"
           :remaining-time="remainingTime"
+          :is-real-time="previewMode === 'realtime'"
         />
       </aside>
     </div>
+    
+    <!-- 部署对话框 -->
+    <DeployDialog
+      v-model:visible="deployDialogVisible"
+      :flow-id="flowId"
+      :project-id="projectId"
+      :flow-name="flowName"
+      @deploy-success="onDeploySuccess"
+      @deploy-error="onDeployError"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, VideoPlay, VideoPause, RefreshRight, Position } from '@element-plus/icons-vue'
+import { Back, VideoPlay, VideoPause, RefreshRight, Position, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import CesiumViewer from '@/components/CesiumViewer.vue'
 import UAVStatusPanel from '@/components/UAVStatusPanel.vue'
+import DeployDialog from '@/components/DeployDialog.vue'
 import { flowsApi } from '@/api/flows'
+import { useUavStore } from '@/stores/uav'
+import { useTelemetryStore } from '@/stores/telemetry'
+import type { UAVTelemetry } from '@/types/uav'
 
 // 类型定义
 interface Waypoint {
@@ -126,8 +189,14 @@ interface Telemetry {
 const route = useRoute()
 const router = useRouter()
 
+// Stores
+const uavStore = useUavStore()
+const telemetryStore = useTelemetryStore()
+
 // 状态
 const flowName = ref('')
+const flowId = ref('')
+const projectId = ref('')
 const waypoints = ref<Waypoint[]>([])
 const searchArea = ref<Waypoint[]>([])
 const isPlaying = ref(false)
@@ -136,6 +205,9 @@ const progress = ref(0)
 const speed = ref(1)
 const currentWaypointIndex = ref(-1)
 const statusPanelRef = ref()
+const previewMode = ref<'simulation' | 'realtime'>('simulation')
+const selectedUavId = ref('')
+const deployDialogVisible = ref(false)
 
 // 模拟定时器
 let simulationTimer: number | null = null
@@ -151,6 +223,47 @@ const telemetry = ref<Telemetry>({
     lat: 40.0768,
     lng: 116.3477
   }
+})
+
+// 实时遥测数据
+const realTimeTelemetry = ref<UAVTelemetry | null>(null)
+
+// 当前显示的遥测数据
+const currentTelemetry = computed(() => {
+  if (previewMode.value === 'realtime' && realTimeTelemetry.value) {
+    return {
+      altitude: realTimeTelemetry.value.altitude,
+      speed: realTimeTelemetry.value.speed,
+      battery: realTimeTelemetry.value.batteryPercent,
+      satellites: realTimeTelemetry.value.satelliteCount,
+      heading: realTimeTelemetry.value.heading,
+      position: {
+        lat: realTimeTelemetry.value.latitude,
+        lng: realTimeTelemetry.value.longitude
+      }
+    }
+  }
+  return telemetry.value
+})
+
+// 在线UAV列表
+const onlineUavs = computed(() => {
+  return uavStore.onlineUavs
+})
+
+// 是否可以部署
+const canDeploy = computed(() => {
+  return waypoints.value.length > 0 && uavStore.onlineUavs.length > 0
+})
+
+// 连接状态
+const connectionStatus = computed(() => {
+  if (!selectedUavId.value) return { type: 'info', text: '未选择', loading: false }
+  if (telemetryStore.isConnecting) return { type: 'warning', text: '连接中...', loading: true }
+  
+  const data = telemetryStore.uavData.get(selectedUavId.value)
+  if (data?.isConnected) return { type: 'success', text: '已连接', loading: false }
+  return { type: 'danger', text: '已断开', loading: false }
 })
 
 // 模拟状态
@@ -187,6 +300,13 @@ const flightDistance = computed(() => {
 
 // 剩余时间计算
 const remainingTime = computed(() => {
+  if (previewMode.value === 'realtime') {
+    const data = telemetryStore.getUavData(selectedUavId.value)
+    if (!data) return 0
+    const stats = telemetryStore.getFlightStats(selectedUavId.value)
+    return stats.duration
+  }
+  
   if (!isPlaying.value || waypoints.value.length === 0) return 0
   
   const totalDistance = flightDistance.value
@@ -220,10 +340,8 @@ const calculateDistance = (p1: Waypoint, p2: Waypoint): number => {
 const generateWaypoints = (area: Waypoint[], pattern: string = 'lawn_mower'): Waypoint[] => {
   if (area.length < 3) return []
   
-  // 简单的网格搜索航点生成
   const waypoints: Waypoint[] = []
   
-  // 计算边界框
   const lats = area.map(p => p.lat)
   const lngs = area.map(p => p.lng)
   const minLat = Math.min(...lats)
@@ -231,14 +349,12 @@ const generateWaypoints = (area: Waypoint[], pattern: string = 'lawn_mower'): Wa
   const minLng = Math.min(...lngs)
   const maxLng = Math.max(...lngs)
   
-  // 生成网格
-  const lines = 5 // 搜索线数量
+  const lines = 5
   const lineSpacing = (maxLng - minLng) / (lines - 1)
   
   for (let i = 0; i < lines; i++) {
     const lng = minLng + i * lineSpacing
     
-    // 奇数行反向
     if (i % 2 === 0) {
       waypoints.push({ lat: minLat, lng, alt: 100 })
       waypoints.push({ lat: maxLat, lng, alt: 100 })
@@ -271,17 +387,14 @@ const updateTelemetry = () => {
   const wp1 = waypoints.value[currentSegment]
   const wp2 = waypoints.value[currentSegment + 1]
   
-  // 插值位置
   telemetry.value.position.lat = wp1.lat + (wp2.lat - wp1.lat) * segmentPercent
   telemetry.value.position.lng = wp1.lng + (wp2.lng - wp1.lng) * segmentPercent
   telemetry.value.altitude = (wp1.alt || 100) + ((wp2.alt || 100) - (wp1.alt || 100)) * segmentPercent
   
-  // 计算航向
   const dLat = wp2.lat - wp1.lat
   const dLng = wp2.lng - wp1.lng
   telemetry.value.heading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360
   
-  // 模拟电量消耗
   telemetry.value.battery = Math.max(0, 85 - progressRatio * 30)
 }
 
@@ -299,18 +412,14 @@ const startSimulation = () => {
     statusPanelRef.value.addLog('开始飞行模拟', 'success')
   }
   
-  // 启动模拟循环
   const simulate = () => {
     if (!isPlaying.value) return
     
-    // 更新进度
     const increment = 0.5 * speed.value
     progress.value = Math.min(100, progress.value + increment)
     
-    // 更新遥测
     updateTelemetry()
     
-    // 检查完成
     if (progress.value >= 100) {
       isPlaying.value = false
       if (statusPanelRef.value) {
@@ -352,7 +461,6 @@ const resetSimulation = () => {
     simulationTimer = null
   }
   
-  // 重置遥测
   telemetry.value = {
     altitude: 100,
     speed: 8,
@@ -378,11 +486,48 @@ const onWaypointReached = (index: number) => {
   }
 }
 
-// 模拟完成回调
-const onSimulationComplete = () => {
-  isPlaying.value = false
+// 遥测数据更新回调
+const onTelemetryUpdate = (data: UAVTelemetry) => {
+  realTimeTelemetry.value = data
+}
+
+// UAV选择回调
+const onUavSelect = (uavId: string) => {
+  if (!uavId) return
+  
+  // 停止之前的监控
+  if (telemetryStore.activeUavIds.has(uavId)) {
+    telemetryStore.stopMonitoring(uavId)
+  }
+  
+  // 开始新的监控
+  telemetryStore.startMonitoring(uavId).catch((error) => {
+    ElMessage.error(`连接UAV失败: ${error.message}`)
+  })
+}
+
+// 显示部署对话框
+const showDeployDialog = () => {
+  if (!flowId.value || flowId.value === 'new') {
+    ElMessage.warning('请先保存任务')
+    return
+  }
+  deployDialogVisible.value = true
+}
+
+// 部署成功回调
+const onDeploySuccess = (jobs: any[]) => {
+  ElMessage.success(`成功部署到 ${jobs.length} 架UAV`)
   if (statusPanelRef.value) {
-    statusPanelRef.value.addLog('飞行模拟完成', 'success')
+    statusPanelRef.value.addLog(`任务已部署到 ${jobs.length} 架UAV`, 'success')
+  }
+}
+
+// 部署失败回调
+const onDeployError = (error: string) => {
+  ElMessage.error(`部署失败: ${error}`)
+  if (statusPanelRef.value) {
+    statusPanelRef.value.addLog(`部署失败: ${error}`, 'error')
   }
 }
 
@@ -391,24 +536,21 @@ const goBack = () => {
   router.push('/builder')
 }
 
-// 部署任务
-const deployFlow = () => {
-  ElMessage.success('任务部署功能开发中')
-}
-
 // 加载 Flow 数据
 const loadFlow = async () => {
-  const { projectId, flowId } = route.params
+  const { projectId: pid, flowId: fid } = route.params
   
-  if (!projectId || !flowId || flowId === 'new') {
+  if (!pid || !fid || fid === 'new') {
     return
   }
   
+  projectId.value = pid as string
+  flowId.value = fid as string
+  
   try {
-    const flow = await flowsApi.get(projectId as string, flowId as string)
+    const flow = await flowsApi.get(pid as string, fid as string)
     flowName.value = flow.name
     
-    // 从节点中提取搜索区域
     const searchNode = flow.nodes.find((n: any) => 
       n.data?.type === 'search_area' || n.data?.type?.includes('search')
     )
@@ -430,14 +572,31 @@ watch(speed, (newSpeed) => {
   }
 })
 
+// 监听预览模式变化
+watch(previewMode, (mode) => {
+  if (mode === 'realtime') {
+    resetSimulation()
+    // 加载UAV列表
+    uavStore.loadUavs()
+  } else {
+    // 停止实时监控
+    if (selectedUavId.value) {
+      telemetryStore.stopMonitoring(selectedUavId.value)
+    }
+  }
+})
+
 onMounted(() => {
   loadFlow()
+  uavStore.loadUavs()
 })
 
 onUnmounted(() => {
   if (simulationTimer) {
     clearTimeout(simulationTimer)
   }
+  // 停止所有实时监控
+  telemetryStore.stopAllMonitoring()
 })
 </script>
 

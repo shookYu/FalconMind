@@ -1,11 +1,18 @@
 <template>
   <div class="uav-status-panel">
     <div class="panel-header">
-      <h3>UAV 状态</h3>
+      <h3>{{ isRealTime ? '实时状态' : 'UAV 状态' }}</h3>
       <el-tag :type="statusType" effect="dark">{{ statusText }}</el-tag>
     </div>
     
     <el-divider />
+    
+    <!-- 实时模式指示器 -->
+    <div v-if="isRealTime" class="realtime-indicator">
+      <div class="pulse-dot"></div>
+      <span>实时数据流</span>
+      <span class="last-update">{{ lastUpdateText }}</span>
+    </div>
     
     <!-- 飞行数据 -->
     <div class="data-section">
@@ -89,6 +96,36 @@
       </div>
     </div>
     
+    <!-- 实时统计 -->
+    <template v-if="isRealTime">
+      <el-divider />
+      
+      <div class="data-section">
+        <h4>飞行统计</h4>
+        
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="label">总距离</span>
+            <span class="value">{{ (flightStats.totalDistance / 1000).toFixed(2) }} km</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="label">飞行时长</span>
+            <span class="value">{{ formatDuration(flightStats.duration) }}</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="label">平均速度</span>
+            <span class="value">{{ flightStats.averageSpeed.toFixed(1) }} m/s</span>
+          </div>
+          
+          <div class="stat-item">
+            <span class="label">最大高度</span>
+            <span class="value">{{ flightStats.maxAltitude.toFixed(0) }} m</span>
+          </div>
+        </div>
+      </div>
+    </template>
     
     <el-divider />
     
@@ -99,7 +136,7 @@
         <el-button link size="small" @click="clearLogs">清除</el-button>
       </div>
       
-      <div class="log-list">
+      <div class="log-list" ref="logListRef">
         <div 
           v-for="(log, index) in logs" 
           :key="index"
@@ -119,7 +156,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
+import { useTelemetryStore } from '@/stores/telemetry'
 
 interface Telemetry {
   altitude: number
@@ -136,7 +174,7 @@ interface Telemetry {
 interface Log {
   time: Date
   message: string
-  type: 'info' | 'warning' | 'success'
+  type: 'info' | 'warning' | 'success' | 'error'
 }
 
 interface Props {
@@ -147,6 +185,8 @@ interface Props {
   totalWaypoints?: number
   flightDistance?: number
   remainingTime?: number
+  uavId?: string
+  isRealTime?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -163,8 +203,13 @@ const props = withDefaults(defineProps<Props>(), {
   currentWaypoint: 0,
   totalWaypoints: 10,
   flightDistance: 0,
-  remainingTime: 0
+  remainingTime: 0,
+  isRealTime: false
 })
+
+const telemetryStore = useTelemetryStore()
+const logListRef = ref<HTMLElement>()
+const lastUpdateTime = ref<Date | null>(null)
 
 // 日志
 const logs = ref<Log[]>([
@@ -201,6 +246,29 @@ const batteryClass = computed(() => {
   return ''
 })
 
+// 最后更新时间文本
+const lastUpdateText = computed(() => {
+  if (!lastUpdateTime.value) return ''
+  const diff = Date.now() - lastUpdateTime.value.getTime()
+  if (diff < 1000) return '刚刚'
+  if (diff < 60000) return `${Math.floor(diff / 1000)}秒前`
+  return `${Math.floor(diff / 60000)}分钟前`
+})
+
+// 飞行统计
+const flightStats = computed(() => {
+  if (!props.uavId || !props.isRealTime) {
+    return {
+      totalDistance: 0,
+      duration: 0,
+      averageSpeed: 0,
+      maxAltitude: 0,
+      minAltitude: 0
+    }
+  }
+  return telemetryStore.getFlightStats(props.uavId)
+})
+
 // 格式化时间
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)} 秒`
@@ -210,6 +278,18 @@ const formatTime = (seconds: number): string => {
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return `${hours} 时 ${mins} 分`
+}
+
+// 格式化时长
+const formatDuration = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`
 }
 
 // 格式化日志时间
@@ -232,12 +312,47 @@ const addLog = (message: string, type: Log['type'] = 'info') => {
   if (logs.value.length > 50) {
     logs.value = logs.value.slice(0, 50)
   }
+  // 滚动到顶部
+  nextTick(() => {
+    if (logListRef.value) {
+      logListRef.value.scrollTop = 0
+    }
+  })
 }
 
 // 清除日志
 const clearLogs = () => {
   logs.value = []
 }
+
+// 监听实时遥测更新
+watch(
+  () => props.telemetry,
+  () => {
+    if (props.isRealTime) {
+      lastUpdateTime.value = new Date()
+    }
+  },
+  { deep: true }
+)
+
+// 监听状态变化
+watch(
+  () => props.status,
+  (newStatus, oldStatus) => {
+    if (newStatus !== oldStatus) {
+      const messages: Record<string, string> = {
+        running: '开始飞行',
+        paused: '飞行暂停',
+        completed: '飞行完成',
+        idle: '返回待机'
+      }
+      if (messages[newStatus]) {
+        addLog(messages[newStatus], newStatus === 'completed' ? 'success' : 'info')
+      }
+    }
+  }
+)
 
 // 暴露方法
 defineExpose({
@@ -264,6 +379,50 @@ defineExpose({
     font-size: 16px;
     font-weight: 600;
   }
+}
+
+.realtime-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f9ff;
+  border-left: 3px solid #409eff;
+  margin: 0 16px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #409eff;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #409eff;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(64, 158, 255, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0);
+  }
+}
+
+.last-update {
+  margin-left: auto;
+  color: #909399;
+  font-size: 12px;
 }
 
 .data-section {
@@ -358,6 +517,32 @@ defineExpose({
   font-size: 14px;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  
+  .label {
+    font-size: 11px;
+    color: #909399;
+    margin-bottom: 4px;
+  }
+  
+  .value {
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+  }
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -391,8 +576,13 @@ defineExpose({
   &.warning {
     color: #e6a23c;
   }
+  
   &.success {
     color: #67c23a;
+  }
+  
+  &.error {
+    color: #f56c6c;
   }
 }
 

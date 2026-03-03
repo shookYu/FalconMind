@@ -12,25 +12,49 @@
     <div v-if="isReady" class="offline-badge">
       <el-tag type="info" effect="dark" size="small">
         <span class="badge-icon">📍</span>
-        离线模式 - 昌平公园
+        {{ isRealTimeMode ? '📡 实时模式' : '离线模式 - 昌平公园' }}
+      </el-tag>
+    </div>
+    
+    <!-- 实时连接状态 -->
+    <div v-if="isRealTimeMode && isReady" class="connection-status">
+      <el-tag :type="connectionStatus.type" effect="dark" size="small">
+        <el-icon v-if="connectionStatus.loading" class="is-loading"><Loading /></el-icon>
+        {{ connectionStatus.text }}
       </el-tag>
     </div>
     
     <!-- 模拟控制层 -->
     <div class="simulation-overlay" v-if="isReady">
       <!-- 进度条 -->
-      <div class="progress-bar" v-if="isPlaying">
+      <div class="progress-bar" v-if="isPlaying || isRealTimeMode">
         <el-progress 
-          :percentage="progress" 
+          :percentage="displayProgress" 
           :stroke-width="8"
           :show-text="false"
         />
-        <span class="progress-text">{{ Math.round(progress) }}%</span>
+        <span class="progress-text">{{ Math.round(displayProgress) }}%</span>
       </div>
       
-      <!-- 航点标记 -->
+      <!-- 航点信息 -->
       <div class="waypoint-info" v-if="currentWaypointIndex >= 0">
         当前航点: {{ currentWaypointIndex + 1 }} / {{ waypoints.length }}
+      </div>
+      
+      <!-- 实时遥测数据 -->
+      <div v-if="isRealTimeMode && realTimeTelemetry" class="telemetry-overlay">
+        <div class="telemetry-item">
+          <span class="label">高度</span>
+          <span class="value">{{ realTimeTelemetry.altitude.toFixed(1) }}m</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="label">速度</span>
+          <span class="value">{{ realTimeTelemetry.speed.toFixed(1) }}m/s</span>
+        </div>
+        <div class="telemetry-item">
+          <span class="label">电量</span>
+          <span class="value" :class="batteryClass">{{ realTimeTelemetry.batteryPercent }}%</span>
+        </div>
       </div>
     </div>
     
@@ -48,13 +72,19 @@
         <span class="legend-icon" style="background: #e6a23c"></span>
         <span>搜索区域</span>
       </div>
+      <div v-if="isRealTimeMode" class="legend-item">
+        <span class="legend-icon" style="background: #f56c6c"></span>
+        <span>实际轨迹</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
+import { useTelemetryStore } from '@/stores/telemetry'
+import type { UAVTelemetry } from '@/types/uav'
 
 // 昌平公园默认位置
 const CHANGPING_PARK = {
@@ -75,45 +105,78 @@ interface Props {
   isPlaying?: boolean
   speed?: number
   progress?: number
+  // Real-time mode props
+  uavId?: string
+  isRealTimeMode?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   waypoints: () => [],
   isPlaying: false,
   speed: 1,
-  progress: 0
+  progress: 0,
+  isRealTimeMode: false
 })
 
 const emit = defineEmits<{
   (e: 'waypointReached', index: number): void
   (e: 'simulationComplete'): void
+  (e: 'telemetryUpdate', telemetry: UAVTelemetry): void
 }>()
 
-// 状态
+// Stores
+const telemetryStore = useTelemetryStore()
+
+// State
 const isReady = ref(false)
 const viewer = ref<any>(null)
 const currentWaypointIndex = ref(-1)
+const realTimeTelemetry = ref<UAVTelemetry | null>(null)
+const isConnected = ref(false)
 
 // UAV 实体
 let uavEntity: any = null
 let waypointEntities: any[] = []
-let trajectoryLine: any = null
+let plannedTrajectoryLine: any = null
+let actualTrajectoryLine: any = null
 let searchAreaEntity: any = null
 let Cesium: any = null
 
-// 初始化离线 Cesium
+// Computed
+const displayProgress = computed(() => {
+  if (props.isRealTimeMode) {
+    const data = telemetryStore.getUavData(props.uavId || '')
+    if (data && data.totalWaypoints > 0) {
+      return (data.currentWaypoint / data.totalWaypoints) * 100
+    }
+    return 0
+  }
+  return props.progress
+})
+
+const connectionStatus = computed(() => {
+  if (!props.isRealTimeMode) return { type: 'info', text: '离线模式', loading: false }
+  if (telemetryStore.isConnecting) return { type: 'warning', text: '连接中...', loading: true }
+  if (isConnected.value) return { type: 'success', text: '已连接', loading: false }
+  return { type: 'danger', text: '已断开', loading: false }
+})
+
+const batteryClass = computed(() => {
+  if (!realTimeTelemetry.value) return ''
+  if (realTimeTelemetry.value.batteryPercent <= 20) return 'danger'
+  if (realTimeTelemetry.value.batteryPercent <= 40) return 'warning'
+  return ''
+})
+
+// Initialize Cesium viewer
 const initViewer = async () => {
   try {
-    // 动态导入 Cesium
     Cesium = await import('cesium')
-    
-    // 离线模式 - 不需要 Token
     Cesium.Ion.defaultAccessToken = ''
     
     const container = document.getElementById('preview-cesium-container')
     if (!container) return
     
-    // 创建 Viewer（离线模式）
     viewer.value = new Cesium.Viewer('preview-cesium-container', {
       animation: false,
       baseLayerPicker: false,
@@ -126,22 +189,18 @@ const initViewer = async () => {
       timeline: false,
       navigationHelpButton: false,
       shouldAnimate: false,
-      // 使用离线影像图层
       imageryProvider: new Cesium.TileMapServiceImageryProvider({
         url: Cesium.buildModuleUrl('Assets/Textures/NaturalEarthII'),
         maximumLevel: 5
       }),
-      // 禁用地形
       terrainProvider: new Cesium.EllipsoidTerrainProvider()
     })
     
-    // 隐藏版权信息
     const creditContainer = viewer.value.cesiumWidget.creditContainer
     if (creditContainer) {
       creditContainer.style.display = 'none'
     }
     
-    // 设置相机位置 - 昌平公园
     viewer.value.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(
         CHANGPING_PARK.lng,
@@ -152,7 +211,6 @@ const initViewer = async () => {
     
     isReady.value = true
     
-    // 显示初始数据
     if (props.waypoints.length > 0) {
       showWaypoints(props.waypoints)
     }
@@ -160,12 +218,33 @@ const initViewer = async () => {
       showSearchArea(props.searchArea)
     }
     
+    // Start real-time mode if enabled
+    if (props.isRealTimeMode && props.uavId) {
+      startRealTimeMode()
+    }
+    
   } catch (error) {
-    console.error('Failed to initialize offline Cesium:', error)
+    console.error('Failed to initialize Cesium:', error)
   }
 }
 
-// 显示搜索区域
+// Start real-time telemetry monitoring
+const startRealTimeMode = async () => {
+  if (!props.uavId) return
+  
+  try {
+    await telemetryStore.startMonitoring(props.uavId)
+    
+    const service = telemetryStore.uavData.get(props.uavId)
+    if (service) {
+      isConnected.value = service.isConnected
+    }
+  } catch (error) {
+    console.error('Failed to start real-time monitoring:', error)
+  }
+}
+
+// Show search area
 const showSearchArea = (area: Waypoint[]) => {
   if (!viewer.value || !Cesium || area.length < 3) return
   
@@ -187,22 +266,19 @@ const showSearchArea = (area: Waypoint[]) => {
     }
   })
   
-  // 飞到区域
   viewer.value.camera.flyTo({
     destination: Cesium.Rectangle.fromCartesianArray(positions),
     duration: 1
   })
 }
 
-// 显示航点
+// Show waypoints
 const showWaypoints = (waypoints: Waypoint[]) => {
   if (!viewer.value || !Cesium || waypoints.length === 0) return
   
-  // 清除旧航点
   waypointEntities.forEach(e => viewer.value?.entities.remove(e))
   waypointEntities = []
   
-  // 添加新航点
   waypoints.forEach((wp, index) => {
     const entity = viewer.value.entities.add({
       position: Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, wp.alt || 100),
@@ -224,16 +300,16 @@ const showWaypoints = (waypoints: Waypoint[]) => {
     waypointEntities.push(entity)
   })
   
-  // 绘制轨迹线
-  if (trajectoryLine) {
-    viewer.value.entities.remove(trajectoryLine)
+  // Draw planned trajectory
+  if (plannedTrajectoryLine) {
+    viewer.value.entities.remove(plannedTrajectoryLine)
   }
   
   const positions = waypoints.map(wp => 
     Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, wp.alt || 100)
   )
   
-  trajectoryLine = viewer.value.entities.add({
+  plannedTrajectoryLine = viewer.value.entities.add({
     polyline: {
       positions,
       width: 4,
@@ -242,7 +318,7 @@ const showWaypoints = (waypoints: Waypoint[]) => {
   })
 }
 
-// 创建 UAV
+// Create UAV entity
 const createUAV = (position: Waypoint) => {
   if (!viewer.value || !Cesium) return
   
@@ -251,7 +327,16 @@ const createUAV = (position: Waypoint) => {
   }
   
   uavEntity = viewer.value.entities.add({
-    position: Cesium.Cartesian3.fromDegrees(position.lng, position.lat, position.alt || 100),
+    position: new Cesium.CallbackProperty(() => {
+      if (realTimeTelemetry.value) {
+        return Cesium.Cartesian3.fromDegrees(
+          realTimeTelemetry.value.longitude,
+          realTimeTelemetry.value.latitude,
+          realTimeTelemetry.value.altitude
+        )
+      }
+      return Cesium.Cartesian3.fromDegrees(position.lng, position.lat, position.alt || 100)
+    }, false),
     point: {
       pixelSize: 20,
       color: Cesium.Color.fromCssColorString('#67c23a'),
@@ -269,7 +354,101 @@ const createUAV = (position: Waypoint) => {
   })
 }
 
-// 更新 UAV 位置
+// Update actual trajectory line
+const updateActualTrajectory = () => {
+  if (!viewer.value || !Cesium || !props.uavId) return
+  
+  const trajectory = telemetryStore.getTrajectory(props.uavId)
+  if (trajectory.length < 2) return
+  
+  const positions = trajectory.map(p => 
+    Cesium.Cartesian3.fromDegrees(p.lng, p.lat, p.alt)
+  )
+  
+  if (actualTrajectoryLine) {
+    viewer.value.entities.remove(actualTrajectoryLine)
+  }
+  
+  actualTrajectoryLine = viewer.value.entities.add({
+    polyline: {
+      positions,
+      width: 3,
+      material: Cesium.Color.fromCssColorString('#f56c6c')
+    }
+  })
+}
+
+// Watch telemetry store updates
+watch(
+  () => props.uavId ? telemetryStore.uavData.get(props.uavId) : null,
+  (data) => {
+    if (!data) return
+    
+    isConnected.value = data.isConnected
+    
+    if (data.telemetry) {
+      realTimeTelemetry.value = data.telemetry
+      emit('telemetryUpdate', data.telemetry)
+      
+      if (!uavEntity) {
+        createUAV({ lat: data.telemetry.latitude, lng: data.telemetry.longitude })
+      }
+    }
+    
+    if (data.currentWaypoint !== currentWaypointIndex.value) {
+      currentWaypointIndex.value = data.currentWaypoint
+      emit('waypointReached', data.currentWaypoint)
+    }
+    
+    // Update actual trajectory
+    updateActualTrajectory()
+  },
+  { deep: true, immediate: true }
+)
+
+// Watch progress changes (simulation mode)
+watch(() => props.progress, (newProgress) => {
+  if (props.isPlaying && !props.isRealTimeMode) {
+    updateUAVPosition(newProgress)
+  }
+})
+
+// Watch waypoints changes
+watch(() => props.waypoints, (newWaypoints) => {
+  if (newWaypoints.length > 0 && viewer.value) {
+    showWaypoints(newWaypoints)
+    if (!props.isRealTimeMode) {
+      createUAV(newWaypoints[0])
+    }
+    currentWaypointIndex.value = 0
+  }
+}, { deep: true })
+
+// Watch search area changes
+watch(() => props.searchArea, (newArea) => {
+  if (newArea && newArea.length >= 3 && viewer.value) {
+    showSearchArea(newArea)
+  }
+}, { deep: true })
+
+// Watch playing state
+watch(() => props.isPlaying, (isPlaying) => {
+  if (isPlaying && !uavEntity && props.waypoints.length > 0 && !props.isRealTimeMode) {
+    createUAV(props.waypoints[0])
+  }
+})
+
+// Watch real-time mode toggle
+watch(() => props.isRealTimeMode, (enabled) => {
+  if (enabled && props.uavId) {
+    startRealTimeMode()
+  } else if (!enabled && props.uavId) {
+    telemetryStore.stopMonitoring(props.uavId)
+    isConnected.value = false
+  }
+})
+
+// Update UAV position for simulation
 const updateUAVPosition = (progress: number) => {
   if (!viewer.value || !Cesium || !uavEntity || props.waypoints.length === 0) return
   
@@ -305,41 +484,14 @@ const updateUAVPosition = (progress: number) => {
   }
 }
 
-// 监听进度变化
-watch(() => props.progress, (newProgress) => {
-  if (props.isPlaying) {
-    updateUAVPosition(newProgress)
-  }
-})
-
-// 监听航点变化
-watch(() => props.waypoints, (newWaypoints) => {
-  if (newWaypoints.length > 0 && viewer.value) {
-    showWaypoints(newWaypoints)
-    createUAV(newWaypoints[0])
-    currentWaypointIndex.value = 0
-  }
-}, { deep: true })
-
-// 监听搜索区域变化
-watch(() => props.searchArea, (newArea) => {
-  if (newArea && newArea.length >= 3 && viewer.value) {
-    showSearchArea(newArea)
-  }
-}, { deep: true })
-
-// 监听播放状态
-watch(() => props.isPlaying, (isPlaying) => {
-  if (isPlaying && !uavEntity && props.waypoints.length > 0) {
-    createUAV(props.waypoints[0])
-  }
-})
-
 onMounted(() => {
   initViewer()
 })
 
 onUnmounted(() => {
+  if (props.uavId) {
+    telemetryStore.stopMonitoring(props.uavId)
+  }
   if (viewer.value) {
     viewer.value.destroy()
     viewer.value = null
@@ -378,6 +530,13 @@ onUnmounted(() => {
   position: absolute;
   top: 20px;
   left: 20px;
+  z-index: 100;
+}
+
+.connection-status {
+  position: absolute;
+  top: 20px;
+  left: 140px;
   z-index: 100;
 }
 
@@ -422,6 +581,44 @@ onUnmounted(() => {
   display: inline-block;
   font-size: 14px;
   color: #606266;
+}
+
+.telemetry-overlay {
+  position: absolute;
+  top: 120px;
+  left: 0;
+  display: flex;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.telemetry-item {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.telemetry-item .label {
+  font-size: 11px;
+  color: #909399;
+}
+
+.telemetry-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.telemetry-item .value.danger {
+  color: #f56c6c;
+}
+
+.telemetry-item .value.warning {
+  color: #e6a23c;
 }
 
 .legend {
