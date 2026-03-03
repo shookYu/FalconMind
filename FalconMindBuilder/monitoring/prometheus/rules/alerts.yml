@@ -1,0 +1,160 @@
+# Prometheus Alerting Rules for FalconMindBuilder
+groups:
+  - name: falconmind.alerts
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status_code=~"5.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: builder
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is above 5% for the last 5 minutes"
+
+      # High Latency Alert
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: builder
+        annotations:
+          summary: "High latency detected"
+          description: "95th percentile latency is above 1 second"
+
+      # UAV Offline Alert
+      - alert: UAVOffline
+        expr: uav_connection_status == 0
+        for: 2m
+        labels:
+          severity: warning
+          service: uav
+        annotations:
+          summary: "UAV {{ $labels.uav_name }} is offline"
+          description: "UAV {{ $labels.uav_name }} ({{ $labels.uav_id }}) has been offline for more than 2 minutes"
+
+      # UAV Low Battery Alert
+      - alert: UAVLowBattery
+        expr: |
+          uav_battery_percent < 20
+        for: 1m
+        labels:
+          severity: critical
+          service: uav
+        annotations:
+          summary: "UAV {{ $labels.uav_name }} low battery"
+          description: "UAV {{ $labels.uav_name }} battery is below 20%"
+
+      # Deployment Failure Alert
+      - alert: DeploymentFailure
+        expr: |
+          increase(uav_deployments_total{status="failed"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          service: builder
+        annotations:
+          summary: "Deployment failure detected"
+          description: "A deployment has failed in the last 10 minutes"
+
+      # High CPU Usage Alert
+      - alert: HighCPUUsage
+        expr: |
+          system_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage has been above 80% for the last 5 minutes"
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: |
+          (system_memory_usage_bytes / system_memory_total_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage has been above 85% for the last 5 minutes"
+
+      # Database Connection Issues
+      - alert: DatabaseConnectionError
+        expr: |
+          up{job="falconmind-builder"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+        annotations:
+          summary: "Database connection error"
+          description: "Backend database connection check is failing"
+
+      # Service Down Alert
+      - alert: ServiceDown
+        expr: up{job=~"falconmind-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+
+      # Active Deployments Stuck
+      - alert: StuckDeployments
+        expr: |
+          active_deployments > 10
+        for: 30m
+        labels:
+          severity: warning
+          service: builder
+        annotations:
+          summary: "Too many active deployments"
+          description: "There are more than 10 active deployments for over 30 minutes"
+
+  - name: node.alerts
+    rules:
+      # Node Exporter alerts
+      - alert: NodeCPUUsage
+        expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80%"
+
+      - alert: NodeMemoryUsage
+        expr: |
+          (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) 
+          / node_memory_MemTotal_bytes * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85%"
+
+      - alert: NodeDiskUsage
+        expr: |
+          (node_filesystem_size_bytes{mountpoint="/"} - node_filesystem_avail_bytes{mountpoint="/"}) 
+          / node_filesystem_size_bytes{mountpoint="/"} * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage on {{ $labels.instance }}"
+          description: "Disk usage is above 85%"

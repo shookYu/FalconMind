@@ -1,0 +1,227 @@
+{
+  "dashboard": {
+    "title": "FalconMindBuilder - UAV Fleet Monitor",
+    "tags": ["falconmind", "uav", "fleet"],
+    "timezone": "Asia/Shanghai",
+    "refresh": "5s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "UAVs Online",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(uav_connection_status)",
+            "legendFormat": "Online"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "green", "value": 3}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "UAVs Offline",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "count(uav_connection_status) - sum(uav_connection_status)",
+            "legendFormat": "Offline"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1},
+                {"color": "red", "value": 3}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Average Battery",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "avg(uav_battery_percent)",
+            "legendFormat": "Battery"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "orange", "value": 20},
+                {"color": "yellow", "value": 40},
+                {"color": "green", "value": 60}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Active Deployments",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "active_deployments",
+            "legendFormat": "Active"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "UAV Connection Status",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "uav_connection_status",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "columns": [
+          {"text": "UAV ID", "value": "uav_id"},
+          {"text": "Name", "value": "uav_name"},
+          {"text": "Status", "value": "Value"}
+        ],
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 6}
+      },
+      {
+        "id": 6,
+        "title": "UAV Battery Levels",
+        "type": "bargauge",
+        "targets": [
+          {
+            "expr": "uav_battery_percent",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "orange", "value": 20},
+                {"color": "yellow", "value": 40},
+                {"color": "green", "value": 60}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 6}
+      },
+      {
+        "id": 7,
+        "title": "Deployments Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(uav_deployments_total[5m])) by (status)",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "UAV Altitude",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "uav_altitude_meters",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "yAxes": [
+          {"format": "m", "label": "Altitude"}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "UAV Speed",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "uav_speed_ms",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "yAxes": [
+          {"format": "m/s", "label": "Speed"}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 10,
+        "title": "UAV Signal Strength",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "uav_signal_strength",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "yAxes": [
+          {"format": "dBm", "label": "Signal"}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 11,
+        "title": "Flight Distance by UAV",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "uav_flight_distance_meters",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "yAxes": [
+          {"format": "m", "label": "Distance"}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+      },
+      {
+        "id": 12,
+        "title": "Satellite Count",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "uav_satellite_count",
+            "legendFormat": "{{ uav_name }}"
+          }
+        ],
+        "yAxes": [
+          {"format": "short", "label": "Satellites"}
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+      }
+    ]
+  }
+}
