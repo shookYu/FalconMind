@@ -1,0 +1,417 @@
+{
+  "_description": "拒止环境区域侦查与视觉制导跟踪 - Builder Flow定义 (阶段3: 视觉跟踪控制)",
+  "_version": "1.0",
+  
+  "flow_id": "phase3_tracking",
+  "flow_name": "视觉制导跟踪",
+  "category": "denied_environment",
+  
+  "metadata": {
+    "description": "使用视觉伺服控制跟踪目标，保持30米距离、10米高度",
+    "autonomous_level": "P1",
+    "can_degraded": true,
+    "requires_continuous_visual": true
+  },
+
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "subtype": "subflow_entry",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "进入: 跟踪阶段",
+        "description": "从阶段2接收锁定目标信息",
+        "input_mapping": {
+          "target_track_id": "$.target_track_id",
+          "initial_distance": "$.initial_distance",
+          "operator_id": "$.operator_id"
+        }
+      }
+    },
+
+    {
+      "id": "tracking_config",
+      "type": "action",
+      "subtype": "parameter_set",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "设置跟踪参数",
+        "description": "配置视觉伺服参数",
+        "parameters": {
+          "desired_distance": 30.0,
+          "distance_tolerance": 2.0,
+          "desired_height": 10.0,
+          "height_tolerance": 1.0,
+          "max_speed": 8.0,
+          "max_angular_rate": 45.0,
+          "kp_distance": 0.5,
+          "ki_distance": 0.1,
+          "kd_distance": 0.2,
+          "kp_position": 0.01,
+          "tracking_timeout": 10.0
+        }
+      }
+    },
+
+    {
+      "id": "start_visual_servo",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "启动视觉伺服",
+        "description": "启动IBVS视觉伺服控制器",
+        "custom_node_type": "VisualServoController",
+        "inputs": {
+          "target_track_id": "${entry.target_track_id}",
+          "config": "${tracking_config.parameters}"
+        },
+        "outputs": {
+          "controller_active": { "type": "boolean" },
+          "control_rate_hz": { "type": "float" }
+        },
+        "parameters": {
+          "control_mode": "IBVS",
+          "update_rate": 20,
+          "enable_adaptive_gain": true,
+          "distance_estimation": "monocular_scale"
+        },
+        "background": true
+      }
+    },
+
+    {
+      "id": "tracking_loop",
+      "type": "action",
+      "subtype": "loop",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "跟踪主循环",
+        "description": "持续跟踪直到任务结束",
+        "loop_type": "while",
+        "condition": "${tracking_active}",
+        "iteration_delay_ms": 50
+      }
+    },
+
+    {
+      "id": "get_tracking_state",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 700, "y": 250 },
+      "data": {
+        "label": "获取跟踪状态",
+        "description": "获取当前跟踪状态和目标信息",
+        "custom_node_type": "TrackingStateGetter",
+        "outputs": {
+          "target_visible": { "type": "boolean" },
+          "current_distance": { "type": "float" },
+          "current_height": { "type": "float" },
+          "distance_error": { "type": "float" },
+          "image_position": { "type": "object" },
+          "track_quality": { "type": "float" },
+          "target_velocity": { "type": "object" }
+        }
+      }
+    },
+
+    {
+      "id": "check_target_visible",
+      "type": "condition",
+      "subtype": "branch",
+      "position": { "x": 700, "y": 400 },
+      "data": {
+        "label": "目标可见?",
+        "branches": {
+          "visible": "目标在视野内",
+          "lost": "目标丢失"
+        }
+      }
+    },
+
+    {
+      "id": "handle_target_lost",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 500, "y": 400 },
+      "data": {
+        "label": "目标丢失处理",
+        "description": "尝试恢复目标跟踪",
+        "custom_node_type": "TargetRecoveryHandler",
+        "inputs": {
+          "last_position": "${get_tracking_state.image_position}",
+          "last_velocity": "${get_tracking_state.target_velocity}"
+        },
+        "outputs": {
+          "recovered": { "type": "boolean" },
+          "time_since_lost": { "type": "float" }
+        },
+        "parameters": {
+          "search_pattern": "SPIRAL",
+          "max_recovery_time": 10.0,
+          "prediction_enabled": true
+        }
+      }
+    },
+
+    {
+      "id": "check_recovery_result",
+      "type": "condition",
+      "subtype": "branch",
+      "position": { "x": 500, "y": 550 },
+      "data": {
+        "label": "恢复成功?",
+        "branches": {
+          "recovered": "目标已恢复",
+          "failed": "恢复失败"
+        }
+      }
+    },
+
+    {
+      "id": "abort_tracking",
+      "type": "action",
+      "subtype": "notification",
+      "position": { "x": 300, "y": 550 },
+      "data": {
+        "label": "跟踪中止",
+        "description": "目标丢失时间过长，中止跟踪",
+        "notification_type": "error",
+        "message": "目标丢失超过10秒，跟踪中止",
+        "actions": ["RETURN_TO_LAUNCH", "RESUME_SEARCH"]
+      }
+    },
+
+    {
+      "id": "compute_servo_control",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 900, "y": 400 },
+      "data": {
+        "label": "计算伺服控制",
+        "description": "计算IBVS控制指令",
+        "custom_node_type": "IBVSController",
+        "inputs": {
+          "target_position": "${get_tracking_state.image_position}",
+          "current_distance": "${get_tracking_state.current_distance}",
+          "desired_distance": "${tracking_config.parameters.desired_distance}",
+          "distance_error": "${get_tracking_state.distance_error}"
+        },
+        "outputs": {
+          "velocity_x": { "type": "float", "description": "前后速度" },
+          "velocity_y": { "type": "float", "description": "左右速度" },
+          "velocity_z": { "type": "float", "description": "上下速度" },
+          "yaw_rate": { "type": "float", "description": "偏航角速度" }
+        },
+        "parameters": {
+          "use_pid": true,
+          "saturate_output": true,
+          "max_velocity": 8.0
+        }
+      }
+    },
+
+    {
+      "id": "send_velocity_command",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 1100, "y": 400 },
+      "data": {
+        "label": "发送速度指令",
+        "description": "发送速度控制指令到飞控",
+        "command": "VELOCITY_CONTROL",
+        "parameters": {
+          "vx": "${compute_servo_control.velocity_x}",
+          "vy": "${compute_servo_control.velocity_y}",
+          "vz": "${compute_servo_control.velocity_z}",
+          "yaw_rate": "${compute_servo_control.yaw_rate}",
+          "coordinate_frame": "BODY_NED"
+        },
+        "safety_checks": [
+          "altitude_bounds",
+          "velocity_limits",
+          "geofence"
+        ]
+      }
+    },
+
+    {
+      "id": "check_distance_quality",
+      "type": "condition",
+      "subtype": "custom",
+      "position": { "x": 1300, "y": 400 },
+      "data": {
+        "label": "距离控制良好?",
+        "description": "检查是否保持目标距离",
+        "custom_node_type": "DistanceQualityChecker",
+        "inputs": {
+          "distance_error": "${get_tracking_state.distance_error}"
+        },
+        "outputs": {
+          "within_tolerance": { "type": "boolean" },
+          "quality_score": { "type": "float" }
+        },
+        "parameters": {
+          "tolerance": 2.0
+        }
+      }
+    },
+
+    {
+      "id": "adjust_parameters",
+      "type": "action",
+      "subtype": "parameter_update",
+      "position": { "x": 1300, "y": 550 },
+      "data": {
+        "label": "调整PID参数",
+        "description": "自适应调整控制参数",
+        "parameter_path": "tracking_config.parameters",
+        "adjustments": {
+          "kp_distance": "${quality_score * 0.1}",
+          "max_speed": "${min(8, current_distance / 5)}"
+        }
+      }
+    },
+
+    {
+      "id": "report_status",
+      "type": "action",
+      "subtype": "communication",
+      "position": { "x": 1500, "y": 400 },
+      "data": {
+        "label": "上报状态",
+        "description": "向地面站报告跟踪状态",
+        "command": "TELEMETRY_REPORT",
+        "frequency": "5Hz",
+        "payload": {
+          "distance": "${get_tracking_state.current_distance}",
+          "height": "${get_tracking_state.current_height}",
+          "quality": "${get_tracking_state.track_quality}",
+          "control_output": "${compute_servo_control}"
+        }
+      }
+    },
+
+    {
+      "id": "check_end_conditions",
+      "type": "condition",
+      "subtype": "multi_branch",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "label": "检查结束条件",
+        "branches": [
+          {
+            "id": "operator_abort",
+            "label": "操作员中止",
+            "condition": "${received_command == 'ABORT'}"
+          },
+          {
+            "id": "battery_low",
+            "label": "电量不足",
+            "condition": "${battery_percent < 30}"
+          },
+          {
+            "id": "mission_complete",
+            "label": "任务完成",
+            "condition": "${tracking_duration > max_tracking_time}"
+          },
+          {
+            "id": "continue",
+            "label": "继续跟踪",
+            "condition": "default"
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "end_tracking",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 1700, "y": 100 },
+      "data": {
+        "label": "结束跟踪",
+        "description": "停止视觉伺服，准备返航",
+        "command": "STOP_BACKGROUND",
+        "targets": ["start_visual_servo"]
+      }
+    },
+
+    {
+      "id": "return_home",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 1900, "y": 100 },
+      "data": {
+        "label": "返航",
+        "description": "使用VINS导航返航",
+        "command": "RETURN_TO_LAUNCH",
+        "parameters": {
+          "altitude": 50,
+          "speed": 5,
+          "navigation_source": "VINS",
+          "landing_mode": "precision"
+        }
+      }
+    },
+
+    {
+      "id": "mission_complete_end",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 2100, "y": 100 },
+      "data": {
+        "label": "任务完成",
+        "description": "任务正常结束",
+        "command": "END_FLOW",
+        "status": "SUCCESS"
+      }
+    }
+  ],
+
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "tracking_config", "type": "default" },
+    { "id": "e2", "source": "tracking_config", "target": "start_visual_servo", "type": "default" },
+    { "id": "e3", "source": "start_visual_servo", "target": "tracking_loop", "type": "default" },
+    { "id": "e4", "source": "tracking_loop", "target": "get_tracking_state", "type": "iteration" },
+    { "id": "e5", "source": "get_tracking_state", "target": "check_target_visible", "type": "default" },
+    { "id": "e6", "source": "check_target_visible", "target": "compute_servo_control", "type": "visible", "label": "可见" },
+    { "id": "e7", "source": "check_target_visible", "target": "handle_target_lost", "type": "lost", "label": "丢失" },
+    { "id": "e8", "source": "handle_target_lost", "target": "check_recovery_result", "type": "default" },
+    { "id": "e9", "source": "check_recovery_result", "target": "get_tracking_state", "type": "recovered", "label": "恢复" },
+    { "id": "e10", "source": "check_recovery_result", "target": "abort_tracking", "type": "failed", "label": "失败" },
+    { "id": "e11", "source": "compute_servo_control", "target": "send_velocity_command", "type": "default" },
+    { "id": "e12", "source": "send_velocity_command", "target": "check_distance_quality", "type": "default" },
+    { "id": "e13", "source": "check_distance_quality", "target": "report_status", "type": "true", "label": "良好" },
+    { "id": "e14", "source": "check_distance_quality", "target": "adjust_parameters", "type": "false", "label": "需调整" },
+    { "id": "e15", "source": "adjust_parameters", "target": "report_status", "type": "default" },
+    { "id": "e16", "source": "report_status", "target": "check_end_conditions", "type": "default" },
+    { "id": "e17", "source": "check_end_conditions", "target": "end_tracking", "type": "operator_abort" },
+    { "id": "e18", "source": "check_end_conditions", "target": "end_tracking", "type": "battery_low" },
+    { "id": "e19", "source": "check_end_conditions", "target": "end_tracking", "type": "mission_complete" },
+    { "id": "e20", "source": "check_end_conditions", "target": "tracking_loop", "type": "continue" },
+    { "id": "e21", "source": "end_tracking", "target": "return_home", "type": "default" },
+    { "id": "e22", "source": "return_home", "target": "mission_complete_end", "type": "complete" }
+  ],
+
+  "config": {
+    "execution_mode": "realtime",
+    "realtime_constraints": {
+      "max_latency_ms": 100,
+      "control_frequency_hz": 20
+    },
+    "safety": {
+      "geofence_strict": true,
+      "altitude_limits": [5, 120],
+      "velocity_limits": [0, 15],
+      "obstacle_avoidance": false
+    },
+    "degraded_modes": {
+      "on_gps_loss": "continue_vins",
+      "on_comm_loss": "continue_autonomous",
+      "on_low_battery": "return_home",
+      "on_tracking_loss": "hover_and_search"
+    }
+  }
+}

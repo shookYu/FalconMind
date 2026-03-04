@@ -1,0 +1,271 @@
+{
+  "_description": "拒止环境区域侦查与视觉制导跟踪 - Builder Flow定义 (阶段2: 目标锁定与人工确认)",
+  "_version": "1.0",
+  
+  "flow_id": "phase2_target_lock",
+  "flow_name": "目标锁定与人工确认",
+  "category": "denied_environment",
+  
+  "metadata": {
+    "description": "目标被发现后，悬停等待地面人员确认，接收目标选择指令",
+    "requires_human_in_the_loop": true,
+    "estimated_duration": "1-5分钟",
+    "timeout_handling": "auto_return"
+  },
+
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "subtype": "subflow_entry",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "进入: 目标锁定阶段",
+        "description": "从阶段1接收目标信息",
+        "input_mapping": {
+          "target_info": "$.target_info",
+          "detection_image": "$.detection_image"
+        }
+      }
+    },
+
+    {
+      "id": "maintain_hover",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "保持悬停",
+        "description": "在当前位置保持悬停，机头指向目标",
+        "command": "HOVER_WITH_YAW",
+        "parameters": {
+          "target_yaw_source": "visual_target",
+          "target_position": "${entry.target_info.bbox_center}",
+          "max_angular_velocity": 30
+        },
+        "background": true
+      }
+    },
+
+    {
+      "id": "stream_to_gcs",
+      "type": "action",
+      "subtype": "communication",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "视频回传",
+        "description": "持续向地面站回传视频流",
+        "command": "START_VIDEO_STREAM",
+        "parameters": {
+          "codec": "H.265",
+          "resolution": "720p",
+          "fps": 15,
+          "bitrate": "500kbps",
+          "overlay_info": {
+            "target_box": "${entry.target_info.bbox}",
+            "tracking_id": "${entry.target_info.track_id}",
+            "detection_confidence": "${entry.target_info.confidence}"
+          }
+        },
+        "background": true,
+        "parallel_to": "maintain_hover"
+      }
+    },
+
+    {
+      "id": "wait_for_selection",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "等待目标选择",
+        "description": "等待地面站发送目标选择指令",
+        "custom_node_type": "TargetSelectionAwaiter",
+        "inputs": {
+          "available_targets": "${entry.target_info}"
+        },
+        "outputs": {
+          "selected_target": { "type": "object" },
+          "selection_confirmed": { "type": "boolean" },
+          "operator_id": { "type": "string" }
+        },
+        "parameters": {
+          "timeout_seconds": 120,
+          "on_timeout": "RETURN_TO_LAUNCH",
+          "allow_target_switch": true,
+          "require_confirmation": true
+        }
+      }
+    },
+
+    {
+      "id": "check_selection_result",
+      "type": "condition",
+      "subtype": "branch",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "label": "选择结果?",
+        "branches": {
+          "confirmed": "目标已确认",
+          "rejected": "目标被拒绝",
+          "timeout": "等待超时"
+        }
+      }
+    },
+
+    {
+      "id": "handle_rejection",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 900, "y": 300 },
+      "data": {
+        "label": "返回搜索",
+        "description": "目标被拒绝，返回区域搜索",
+        "command": "RETURN_TO_PARENT",
+        "return_data": {
+          "action": "RESUME_SEARCH",
+          "exclude_target_id": "${entry.target_info.track_id}"
+        }
+      }
+    },
+
+    {
+      "id": "handle_timeout",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 900, "y": 450 },
+      "data": {
+        "label": "超时返航",
+        "description": "等待超时，执行返航",
+        "command": "RETURN_TO_LAUNCH",
+        "parameters": {
+          "landing_mode": "precision_landing",
+          "altitude": 50
+        }
+      }
+    },
+
+    {
+      "id": "initiate_target_lock",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "label": "初始化目标锁定",
+        "description": "初始化DeepSORT跟踪，锁定选定目标",
+        "custom_node_type": "TargetLockInitializer",
+        "inputs": {
+          "target": "${wait_for_selection.selected_target}"
+        },
+        "outputs": {
+          "lock_success": { "type": "boolean" },
+          "track_quality": { "type": "float" }
+        },
+        "parameters": {
+          "min_quality_for_tracking": 0.7,
+          "reid_threshold": 0.2,
+          "kalman_process_noise": 0.01,
+          "kalman_measurement_noise": 0.1
+        }
+      }
+    },
+
+    {
+      "id": "check_lock_quality",
+      "type": "condition",
+      "subtype": "custom",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "label": "锁定质量足够?",
+        "description": "检查目标锁定质量",
+        "custom_node_type": "LockQualityChecker",
+        "inputs": {
+          "quality": "${initiate_target_lock.track_quality}"
+        },
+        "outputs": {
+          "quality_sufficient": { "type": "boolean" }
+        },
+        "parameters": {
+          "min_quality": 0.7
+        }
+      }
+    },
+
+    {
+      "id": "lock_failed",
+      "type": "action",
+      "subtype": "notification",
+      "position": { "x": 1300, "y": 250 },
+      "data": {
+        "label": "锁定失败",
+        "description": "目标锁定质量不足",
+        "notification_type": "warning",
+        "message": "目标锁定失败，目标可能移动过快或被遮挡",
+        "actions": ["RETRY", "RETURN_TO_SEARCH"]
+      }
+    },
+
+    {
+      "id": "confirm_lock",
+      "type": "action",
+      "subtype": "communication",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "label": "确认锁定",
+        "description": "向地面站确认目标已锁定",
+        "command": "SEND_CONFIRMATION",
+        "parameters": {
+          "message_type": "TARGET_LOCKED",
+          "payload": {
+            "track_id": "${wait_for_selection.selected_target.track_id}",
+            "lock_quality": "${initiate_target_lock.track_quality}",
+            "estimated_distance": "${initiate_target_lock.distance_estimate}",
+            "ready_for_tracking": true
+          }
+        }
+      }
+    },
+
+    {
+      "id": "transition_to_tracking",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 1700, "y": 100 },
+      "data": {
+        "label": "进入跟踪阶段",
+        "description": "转入主动跟踪控制阶段",
+        "command": "SUBFLOW",
+        "subflow_id": "phase3_tracking",
+        "transition_data": {
+          "target_track_id": "${wait_for_selection.selected_target.track_id}",
+          "initial_distance": "${initiate_target_lock.distance_estimate}",
+          "operator_id": "${wait_for_selection.operator_id}"
+        }
+      }
+    }
+  ],
+
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "maintain_hover", "type": "default" },
+    { "id": "e2", "source": "maintain_hover", "target": "stream_to_gcs", "type": "parallel" },
+    { "id": "e3", "source": "stream_to_gcs", "target": "wait_for_selection", "type": "default" },
+    { "id": "e4", "source": "wait_for_selection", "target": "check_selection_result", "type": "complete" },
+    { "id": "e5", "source": "check_selection_result", "target": "initiate_target_lock", "type": "confirmed", "label": "确认" },
+    { "id": "e6", "source": "check_selection_result", "target": "handle_rejection", "type": "rejected", "label": "拒绝" },
+    { "id": "e7", "source": "check_selection_result", "target": "handle_timeout", "type": "timeout", "label": "超时" },
+    { "id": "e8", "source": "initiate_target_lock", "target": "check_lock_quality", "type": "default" },
+    { "id": "e9", "source": "check_lock_quality", "target": "confirm_lock", "type": "true", "label": "质量OK" },
+    { "id": "e10", "source": "check_lock_quality", "target": "lock_failed", "type": "false", "label": "质量不足" },
+    { "id": "e11", "source": "confirm_lock", "target": "transition_to_tracking", "type": "default" }
+  ],
+
+  "config": {
+    "execution_mode": "reactive",
+    "human_in_the_loop": true,
+    "timeout_handling": {
+      "enabled": true,
+      "default_timeout": 120,
+      "action": "RETURN_TO_LAUNCH"
+    }
+  }
+}

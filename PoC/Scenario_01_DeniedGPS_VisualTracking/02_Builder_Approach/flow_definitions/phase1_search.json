@@ -1,0 +1,299 @@
+{
+  "_description": "拒止环境区域侦查与视觉制导跟踪 - Builder Flow定义 (阶段1: 区域侦查)",
+  "_version": "1.0",
+  "_author": "FalconMind Team",
+  
+  "flow_id": "denied_env_search_phase",
+  "flow_name": "拒止环境区域侦查",
+  "category": "denied_environment",
+  
+  "metadata": {
+    "description": "在GPS拒止/欺骗环境下执行区域侦查，使用VINS导航，实时检测目标",
+    "requirements": [
+      "VINS初始化完成",
+      "相机正常",
+      "NPU可用"
+    ],
+    "estimated_duration": "10-30分钟",
+    "risk_level": "high"
+  },
+
+  "nodes": [
+    {
+      "id": "start",
+      "type": "trigger",
+      "subtype": "manual",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "开始任务",
+        "description": "人工启动拒止环境侦查任务",
+        "confirmation_required": true,
+        "confirmation_message": "确认启动拒止环境任务？VINS必须已初始化！"
+      }
+    },
+
+    {
+      "id": "check_vins_status",
+      "type": "condition",
+      "subtype": "custom",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "VINS就绪?",
+        "description": "检查VINS初始化状态",
+        "custom_node_type": "VINSStatusCheck",
+        "inputs": {},
+        "outputs": {
+          "ready": { "type": "boolean", "description": "VINS是否就绪" },
+          "position_confidence": { "type": "float", "description": "定位置信度" }
+        },
+        "parameters": {
+          "min_confidence": 0.8,
+          "timeout_seconds": 5
+        }
+      }
+    },
+
+    {
+      "id": "vins_not_ready_error",
+      "type": "action",
+      "subtype": "notification",
+      "position": { "x": 300, "y": 250 },
+      "data": {
+        "label": "错误: VINS未就绪",
+        "description": "VINS未初始化完成",
+        "notification_type": "error",
+        "message": "VINS未就绪，请先完成VINS初始化！",
+        "auto_abort": true
+      }
+    },
+
+    {
+      "id": "takeoff",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "起飞",
+        "description": "起飞到侦查高度",
+        "command": "TAKEOFF",
+        "parameters": {
+          "altitude": 50,
+          "speed": 3,
+          "heading_mode": "current"
+        },
+        "wait_for_complete": true,
+        "timeout_seconds": 60
+      }
+    },
+
+    {
+      "id": "start_gps_defense",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "label": "启动GPS防护",
+        "description": "启动GPS欺骗检测和防护",
+        "custom_node_type": "GPSDefenseActivator",
+        "inputs": {},
+        "outputs": {
+          "defense_active": { "type": "boolean" },
+          "detection_mode": { "type": "string" }
+        },
+        "parameters": {
+          "raim_check": true,
+          "imu_consistency_check": true,
+          "multisource_fusion": true,
+          "alert_threshold": "SUSPECTED"
+        }
+      }
+    },
+
+    {
+      "id": "search_pattern_generator",
+      "type": "action",
+      "subtype": "navigation",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "label": "生成搜索航点",
+        "description": "基于VINS坐标生成区域搜索航点",
+        "command": "GENERATE_WAYPOINTS",
+        "parameters": {
+          "pattern": "LAWN_MOWER",
+          "area": "${mission_config.search_area}",
+          "altitude": "${mission_config.search_altitude}",
+          "speed": "${mission_config.search_speed}",
+          "turn_radius": 10,
+          "overlap_rate": 0.2
+        }
+      }
+    },
+
+    {
+      "id": "start_visual_detection",
+      "type": "action",
+      "subtype": "custom",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "label": "启动视觉检测",
+        "description": "启动YOLO目标检测和DeepSORT跟踪",
+        "custom_node_type": "VisualDetector",
+        "inputs": {},
+        "outputs": {
+          "detection_active": { "type": "boolean" },
+          "detection_fps": { "type": "float" }
+        },
+        "parameters": {
+          "model": "yolov8n",
+          "classes": ["person", "vehicle"],
+          "confidence_threshold": 0.6,
+          "nms_threshold": 0.45,
+          "input_size": [640, 480],
+          "use_npu": true,
+          "enable_tracking": true
+        }
+      }
+    },
+
+    {
+      "id": "execute_search",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "label": "执行区域侦查",
+        "description": "沿航点执行区域侦查",
+        "command": "FOLLOW_WAYPOINTS",
+        "parameters": {
+          "waypoints": "${search_pattern_generator.waypoints}",
+          "speed": 5,
+          "acceptance_radius": 5,
+          "heading_mode": "toward_next_waypoint"
+        },
+        "parallel_actions": ["start_visual_detection"]
+      }
+    },
+
+    {
+      "id": "check_target_detected",
+      "type": "condition",
+      "subtype": "custom",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "label": "发现目标?",
+        "description": "检测是否有目标被发现",
+        "custom_node_type": "TargetDetectionChecker",
+        "inputs": {
+          "detections": "${start_visual_detection.detections}"
+        },
+        "outputs": {
+          "target_found": { "type": "boolean" },
+          "target_count": { "type": "int" },
+          "best_target": { "type": "object" }
+        },
+        "parameters": {
+          "target_classes": ["person"],
+          "min_confidence": 0.7,
+          "min_detection_frames": 3
+        }
+      }
+    },
+
+    {
+      "id": "continue_search",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 1500, "y": 250 },
+      "data": {
+        "label": "继续侦查",
+        "description": "继续执行搜索，下一航点",
+        "command": "CONTINUE",
+        "condition": "${execute_search.has_more_waypoints}"
+      }
+    },
+
+    {
+      "id": "hover_and_notify",
+      "type": "action",
+      "subtype": "flight_control",
+      "position": { "x": 1700, "y": 100 },
+      "data": {
+        "label": "悬停并通知",
+        "description": "发现目标，悬停等待操作员确认",
+        "command": "HOVER",
+        "parameters": {
+          "duration": 0,
+          "hold_position": true
+        },
+        "notifications": [
+          {
+            "type": "webhook",
+            "url": "${mission_config.gcs_endpoint}/target_detected",
+            "payload": {
+              "mission_id": "${mission_config.mission_id}",
+              "target_info": "${check_target_detected.best_target}",
+              "uav_position": "${start_gps_defense.current_position}"
+            }
+          },
+          {
+            "type": "ui_alert",
+            "message": "发现目标！等待操作员确认",
+            "priority": "high",
+            "require_acknowledgment": true
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "target_acquired",
+      "type": "action",
+      "subtype": "flow_control",
+      "position": { "x": 1900, "y": 100 },
+      "data": {
+        "label": "目标获取完成",
+        "description": "进入目标确认阶段",
+        "command": "SUBFLOW",
+        "subflow_id": "phase2_target_lock",
+        "transition_data": {
+          "target_info": "${check_target_detected.best_target}",
+          "detection_image": "${start_visual_detection.last_frame}"
+        }
+      }
+    }
+  ],
+
+  "edges": [
+    { "id": "e1", "source": "start", "target": "check_vins_status", "type": "default" },
+    { "id": "e2", "source": "check_vins_status", "target": "takeoff", "type": "true", "label": "就绪" },
+    { "id": "e3", "source": "check_vins_status", "target": "vins_not_ready_error", "type": "false", "label": "未就绪" },
+    { "id": "e4", "source": "takeoff", "target": "start_gps_defense", "type": "success" },
+    { "id": "e5", "source": "start_gps_defense", "target": "search_pattern_generator", "type": "default" },
+    { "id": "e6", "source": "search_pattern_generator", "target": "execute_search", "type": "default" },
+    { "id": "e7", "source": "execute_search", "target": "check_target_detected", "type": "waypoint_reached" },
+    { "id": "e8", "source": "check_target_detected", "target": "hover_and_notify", "type": "true", "label": "发现" },
+    { "id": "e9", "source": "check_target_detected", "target": "continue_search", "type": "false", "label": "未发现" },
+    { "id": "e10", "source": "continue_search", "target": "execute_search", "type": "loop_back" },
+    { "id": "e11", "source": "hover_and_notify", "target": "target_acquired", "type": "notification_sent" }
+  ],
+
+  "config": {
+    "execution_mode": "reactive",
+    "error_handling": {
+      "on_node_error": "pause_and_notify",
+      "max_retries": 3,
+      "retry_delay_seconds": 5
+    },
+    "logging": {
+      "level": "info",
+      "save_detections": true,
+      "save_telemetry": true
+    },
+    "safety": {
+      "geofence_enabled": true,
+      "max_altitude": 120,
+      "battery_rtl_threshold": 30,
+      "communication_timeout_seconds": 10
+    }
+  }
+}
