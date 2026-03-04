@@ -1,13 +1,27 @@
 import { ref, onMounted, onUnmounted, shallowRef } from 'vue'
 import * as Cesium from 'cesium'
 
-// 设置 Cesium Token（使用默认的，生产环境应该使用自己的）
-Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE3ZGVkZS00OTI5LTRkNDctYTgxYi0wY2Q4OTVmMGIwMDgiLCJpZCI6NTYwODUsImlhdCI6MTY5NjA0MjE3OH0.MmK0RXva9E8Z7aW3F9X7v3z9z9z9z9z9z9z9z9z9z9z'
+// Offline mode configuration
+const useOfflineMode = true
+const MAP_TILES_URL = '/map-tiles/changping-park'
+
+// Changping Park configuration
+const CHANGPING_PARK = {
+  center: { lat: 40.0768, lng: 116.2048, height: 2000 },
+  bounds: {
+    west: 116.18,
+    south: 40.05,
+    east: 116.23,
+    north: 40.10
+  },
+  zoomRange: [12, 16]
+}
 
 export interface MapConfig {
   center?: { lat: number; lng: number; height?: number }
   zoom?: number
   terrainProvider?: Cesium.TerrainProvider
+  offline?: boolean
 }
 
 export interface DrawingOptions {
@@ -21,6 +35,7 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
   const viewer = shallowRef<Cesium.Viewer | null>(null)
   const isReady = ref(false)
   const isDrawing = ref(false)
+  const error = ref<string | null>(null)
   
   // 存储绘制的实体
   const drawnEntities = ref<Cesium.Entity[]>([])
@@ -31,16 +46,56 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
     const container = document.getElementById(containerId)
     if (!container) {
       console.error(`Container #${containerId} not found`)
+      error.value = `Container #${containerId} not found`
       return
     }
     
     try {
-      // 创建 Viewer
+      // Configure for offline mode
+      if (useOfflineMode) {
+        Cesium.Ion.defaultAccessToken = ''
+      }
+      
+      // Determine center position
+      const center = config.center || CHANGPING_PARK.center
+      
+      // Configure imagery provider
+      let imageryProvider: Cesium.ImageryProvider
+      
+      if (useOfflineMode || config.offline) {
+        // Use offline map tiles
+        imageryProvider = new Cesium.UrlTemplateImageryProvider({
+          url: `${MAP_TILES_URL}/{z}/{x}/{y}.png`,
+          minimumLevel: CHANGPING_PARK.zoomRange[0],
+          maximumLevel: CHANGPING_PARK.zoomRange[1],
+          rectangle: Cesium.Rectangle.fromDegrees(
+            CHANGPING_PARK.bounds.west,
+            CHANGPING_PARK.bounds.south,
+            CHANGPING_PARK.bounds.east,
+            CHANGPING_PARK.bounds.north
+          ),
+          credit: '昌平公园离线地图'
+        })
+      } else {
+        // Use default Cesium imagery
+        imageryProvider = await Cesium.createWorldImageryAsync()
+      }
+      
+      // Configure terrain provider
+      let terrainProvider: Cesium.TerrainProvider
+      if (useOfflineMode || config.offline) {
+        // Use flat terrain for offline mode
+        terrainProvider = new Cesium.EllipsoidTerrainProvider()
+      } else {
+        terrainProvider = await Cesium.createWorldTerrainAsync()
+      }
+      
+      // Create Viewer
       const cesiumViewer = new Cesium.Viewer(containerId, {
         animation: false,
-        baseLayerPicker: true,
+        baseLayerPicker: !useOfflineMode && !config.offline,
         fullscreenButton: false,
-        geocoder: true,
+        geocoder: !useOfflineMode && !config.offline,
         homeButton: true,
         infoBox: false,
         sceneModePicker: true,
@@ -49,17 +104,20 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
         navigationHelpButton: true,
         navigationInstructionsInitiallyVisible: false,
         shouldAnimate: false,
-        terrain: Cesium.Terrain.fromWorldTerrain()
+        imageryProvider: imageryProvider,
+        terrainProvider: terrainProvider,
+        // Disable sky effects in offline mode for better performance
+        skyBox: useOfflineMode ? false : undefined,
+        skyAtmosphere: useOfflineMode ? false : undefined,
       })
       
-      // 隐藏版权信息（开发环境）
+      // Hide credit container
       const creditContainer = cesiumViewer.cesiumWidget.creditContainer as HTMLElement
       if (creditContainer) {
         creditContainer.style.display = 'none'
       }
       
-      // 设置相机位置
-      const center = config.center || { lat: 39.9042, lng: 116.4074, height: 10000 }
+      // Set camera position
       cesiumViewer.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(
           center.lng,
@@ -71,12 +129,20 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
       
       viewer.value = cesiumViewer
       isReady.value = true
+      error.value = null
       
-      // 启用深度测试
+      // Enable depth testing
       cesiumViewer.scene.globe.depthTestAgainstTerrain = true
       
-    } catch (error) {
-      console.error('Failed to initialize Cesium:', error)
+      console.log(`Cesium initialized in ${useOfflineMode ? 'OFFLINE' : 'ONLINE'} mode`)
+      if (useOfflineMode) {
+        console.log('Map tiles:', MAP_TILES_URL)
+        console.log('Center:', CHANGPING_PARK.center)
+      }
+      
+    } catch (err) {
+      error.value = `Failed to initialize Cesium: ${err}`
+      console.error('Cesium initialization error:', err)
     }
   }
   
@@ -118,9 +184,9 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
           polygonEntity = viewer.value!.entities.add({
             polygon: {
               hierarchy: new Cesium.PolygonHierarchy(positions),
-              material: Cesium.Color.fromCssColorString('#409EFF').withAlpha(0.3),
+              material: Cesium.Color.fromCssColorString('#f97316').withAlpha(0.3),
               outline: true,
-              outlineColor: Cesium.Color.fromCssColorString('#409EFF'),
+              outlineColor: Cesium.Color.fromCssColorString('#f97316'),
               outlineWidth: 2
             }
           })
@@ -131,7 +197,7 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
           position: cartesian,
           point: {
             pixelSize: 10,
-            color: Cesium.Color.fromCssColorString('#409EFF'),
+            color: Cesium.Color.fromCssColorString('#f97316'),
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 2
           }
@@ -218,9 +284,9 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
     const entity = viewer.value.entities.add({
       polygon: {
         hierarchy: new Cesium.PolygonHierarchy(positions),
-        material: Cesium.Color.fromCssColorString(options.color || '#409EFF').withAlpha(options.fillOpacity || 0.3),
+        material: Cesium.Color.fromCssColorString(options.color || '#f97316').withAlpha(options.fillOpacity || 0.3),
         outline: true,
-        outlineColor: Cesium.Color.fromCssColorString(options.color || '#409EFF'),
+        outlineColor: Cesium.Color.fromCssColorString(options.color || '#f97316'),
         outlineWidth: 2
       }
     })
@@ -244,7 +310,7 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
         position: Cesium.Cartesian3.fromDegrees(wp.lng, wp.lat, wp.alt || 100),
         point: {
           pixelSize: 12,
-          color: Cesium.Color.fromCssColorString(options.color || '#67C23A'),
+          color: Cesium.Color.fromCssColorString(options.color || '#22c55e'),
           outlineColor: Cesium.Color.WHITE,
           outlineWidth: 2
         },
@@ -266,7 +332,7 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
         polyline: {
           positions,
           width: 3,
-          material: Cesium.Color.fromCssColorString(options.color || '#67C23A').withAlpha(0.8)
+          material: Cesium.Color.fromCssColorString(options.color || '#22c55e').withAlpha(0.8)
         }
       })
     }
@@ -279,7 +345,7 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
     const entity = viewer.value.entities.add({
       position: Cesium.Cartesian3.fromDegrees(position.lng, position.lat, position.alt || 100),
       model: {
-        uri: '/models/uav.glb', // 需要有 UAV 模型文件
+        uri: '/models/uav.glb',
         scale: 10,
         minimumPixelSize: 50
       },
@@ -296,6 +362,25 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
     return entity
   }
   
+  // 飞到昌平公园
+  const flyToChangpingPark = () => {
+    if (!viewer.value) return
+    
+    viewer.value.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(
+        CHANGPING_PARK.center.lng,
+        CHANGPING_PARK.center.lat,
+        CHANGPING_PARK.center.height
+      ),
+      orientation: {
+        heading: 0.0,
+        pitch: -Cesium.Math.PI_OVER_TWO + 0.3,
+        roll: 0.0
+      },
+      duration: 2
+    })
+  }
+  
   onMounted(() => {
     initMap()
   })
@@ -308,14 +393,17 @@ export function useCesium(containerId: string, config: MapConfig = {}) {
     viewer,
     isReady,
     isDrawing,
+    error,
     activeEntity,
     drawnEntities,
+    changpingPark: CHANGPING_PARK,
     initMap,
     destroyMap,
     startDrawingPolygon,
     clearDrawings,
     showSearchArea,
     showWaypoints,
-    showUAV
+    showUAV,
+    flyToChangpingPark
   }
 }
