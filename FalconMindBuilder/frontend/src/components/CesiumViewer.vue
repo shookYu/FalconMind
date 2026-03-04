@@ -11,8 +11,8 @@
     <!-- 离线模式提示 -->
     <div v-if="isReady" class="offline-badge">
       <el-tag type="info" effect="dark" size="small">
-        <span class="badge-icon">📍</span>
-        {{ isRealTimeMode ? '📡 实时模式' : '离线模式 - 昌平公园' }}
+        <span class="badge-icon"><el-icon><Location /></el-icon></span>
+        {{ isRealTimeMode ? '实时模式' : '离线模式 - 昌平公园' }}
       </el-tag>
     </div>
     
@@ -82,7 +82,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { Loading } from '@element-plus/icons-vue'
+import { Loading, Location } from '@element-plus/icons-vue'
 import { useTelemetryStore } from '@/stores/telemetry'
 import type { UAVTelemetry } from '@/types/uav'
 
