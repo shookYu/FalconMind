@@ -63,7 +63,11 @@
               :class="{ selected: selectedTemplate?.id === template.id }"
               @click="selectTemplate(template)"
             >
-              <div class="template-icon">{{ template.icon }}</div>
+              <div class="template-icon">
+                <el-icon :size="32">
+                  <component :is="template.icon" />
+                </el-icon>
+              </div>
               <div class="template-info">
                 <h4 class="template-name">{{ template.name }}</h4>
                 <p class="template-desc">{{ template.description }}</p>
@@ -217,7 +221,7 @@ const getDefaultTemplates = (): Template[] => [
     name: '基础搜索',
     description: '标准的区域搜索任务，适用于大多数搜索场景',
     category: 'search',
-    icon: '🔍',
+    icon: 'Search',
     complexity: 'simple',
     nodes: [
       { id: '1', type: 'trigger', data: { label: '任务开始' } },
@@ -231,7 +235,7 @@ const getDefaultTemplates = (): Template[] => [
     name: '森林火灾搜索',
     description: '螺旋搜索模式配合热成像检测',
     category: 'fire',
-    icon: '🔥',
+    icon: 'FireFilled',
     complexity: 'medium',
     nodes: [
       { id: '1', type: 'trigger', data: { label: '任务开始' } },
@@ -247,7 +251,7 @@ const getDefaultTemplates = (): Template[] => [
     name: '周界巡逻',
     description: '沿区域边界进行巡逻监控',
     category: 'patrol',
-    icon: '🛡️',
+    icon: 'FirstAidKit',
     complexity: 'simple',
     nodes: [
       { id: '1', type: 'trigger', data: { label: '任务开始' } },
@@ -261,7 +265,7 @@ const getDefaultTemplates = (): Template[] => [
     name: '电力巡检',
     description: '电力线塔巡检，自动拍照记录',
     category: 'inspection',
-    icon: '⚡',
+    icon: 'Lightning',
     complexity: 'medium',
     nodes: [
       { id: '1', type: 'trigger', data: { label: '任务开始' } },
@@ -276,7 +280,7 @@ const getDefaultTemplates = (): Template[] => [
     name: '搜救任务',
     description: '扇形搜索配合热成像和可见光双检测',
     category: 'rescue',
-    icon: '🚁',
+    icon: 'Position',
     complexity: 'complex',
     nodes: [
       { id: '1', type: 'trigger', data: { label: '任务开始' } },

@@ -107,7 +107,8 @@ const getStatusLabel = (status: string): string => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   overflow: hidden;
 
@@ -116,7 +117,14 @@ const getStatusLabel = (status: string): string => {
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #e4e7ed;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
 
     h3 {
       margin: 0;
@@ -134,7 +142,23 @@ const getStatusLabel = (status: string): string => {
 .uav-item {
   padding: 12px;
   margin-bottom: 8px;
-  background: #f5f7fa;
+  .uav-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &--selected {
+    background: rgba(249, 115, 22, 0.15);
+    border-color: rgba(249, 115, 22, 0.3);
+  }
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -162,6 +186,9 @@ const getStatusLabel = (status: string): string => {
   &-body {
     font-size: 12px;
     color: #606266;
+  &-body {
+    font-size: 12px;
+    color: #94a3b8;
   }
 }
 
@@ -172,7 +199,9 @@ const getStatusLabel = (status: string): string => {
   font-weight: 500;
 
   .el-icon {
-    color: #409eff;
+  .el-icon {
+    color: #f97316;
+  }
   }
 }
 

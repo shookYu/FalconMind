@@ -279,7 +279,7 @@ const onExecute = () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f7fa;
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .flow-toolbar {
@@ -288,7 +288,9 @@ const onExecute = () => {
   align-items: center;
   padding: 12px 16px;
   background: white;
-  border-bottom: 1px solid #e4e7ed;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 
   &-left,
   &-right {
@@ -305,7 +307,7 @@ const onExecute = () => {
     .flow-name {
       font-weight: 600;
       font-size: 16px;
-    }
+      color: #f8fafc;
   }
 }
 

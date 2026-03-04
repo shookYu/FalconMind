@@ -21,7 +21,10 @@
             <div class="uav-name">{{ uav.name }}</div>
             <div class="uav-meta">
               <span>{{ uav.status }}</span>
-              <span v-if="uav.battery">🔋 {{ uav.battery }}%</span>
+              <span v-if="uav.battery" class="battery-indicator">
+                <ElIcon><Battery /></ElIcon>
+                {{ uav.battery }}%
+              </span>
             </div>
           </div>
         </div>
@@ -59,6 +62,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Lightning, Plus, VideoPlay, VideoPause, CircleClose, Battery, Sugar as Uav } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const selectedUav = ref('')
@@ -185,6 +189,15 @@ const emergencyStop = () => {
   color: rgba(255, 255, 255, 0.5);
 }
 
+.battery-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  
+  .el-icon {
+    font-size: 12px;
+  }
+}
 .quick-actions {
   display: flex;
   flex-direction: column;

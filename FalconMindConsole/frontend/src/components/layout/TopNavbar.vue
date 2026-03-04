@@ -117,7 +117,17 @@ const handleCommand = (command: string) => {
 };
 </script>
 
-<style scoped lang="scss">
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 16px;
+  // 改进: 深色玻璃背景，与侧边栏统一
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 .navbar {
   display: flex;
   align-items: center;
@@ -137,6 +147,18 @@ const handleCommand = (command: string) => {
   .title {
     font-size: 18px;
     font-weight: 700;
+    // 改进: 白色文字提高对比度
+    color: #f8fafc;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .title {
+    font-size: 18px;
+    font-weight: 700;
     color: #303133;
   }
 }
@@ -147,6 +169,29 @@ const handleCommand = (command: string) => {
 }
 
 .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  // 改进: 灰色文字，橙色高亮
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  
+  &:hover {
+    // 改进: 工业橙作为强调色
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.1);
+  }
+  
+  &.active {
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.15);
+    font-weight: 600;
+  }
+}
   display: flex;
   align-items: center;
   gap: 6px;
@@ -181,6 +226,25 @@ const handleCommand = (command: string) => {
   justify-content: center;
   width: 36px;
   height: 36px;
+  // 改进: 灰色文字
+  color: #94a3b8;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+  
+  &:hover {
+    // 改进: 白色高亮
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   color: #606266;
   text-decoration: none;
   cursor: pointer;
@@ -201,6 +265,22 @@ const handleCommand = (command: string) => {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
+  // 改进: 工业标准危险红
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
   background: #f56c6c;
   color: #fff;
   font-size: 10px;
@@ -211,6 +291,35 @@ const handleCommand = (command: string) => {
 }
 
 .user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-left: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .username {
+    font-size: 14px;
+    // 改进: 灰色文字
+    color: #94a3b8;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .el-icon {
+    // 改进: 灰色图标
+    color: #94a3b8;
+    font-size: 12px;
+  }
+}
   display: flex;
   align-items: center;
   gap: 8px;

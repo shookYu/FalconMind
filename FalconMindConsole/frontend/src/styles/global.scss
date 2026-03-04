@@ -1,0 +1,158 @@
+// FalconMindConsole Global Theme
+// Based on ui-ux-pro-max-skill design system recommendations
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  // Design System Variables
+  --color-bg-primary: #0f172a;
+  --color-bg-secondary: rgba(15, 23, 42, 0.85);
+  --color-bg-card: rgba(255, 255, 255, 0.05);
+  
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: rgba(255, 255, 255, 0.5);
+  
+  // Industrial color palette
+  --color-accent: #f97316;      // Safety Orange
+  --color-accent-hover: #ea580c;
+  --color-success: #22c55e;     // Status Green
+  --color-warning: #eab308;     // Warning Yellow
+  --color-danger: #ef4444;      // Danger Red
+  
+  // Glassmorphism
+  --glass-bg: rgba(15, 23, 42, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: 15px;
+  
+  // Typography
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  // Transitions
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  // Spacing
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  
+  // Border Radius
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+// Element Plus Theme Overrides
+.el-button--primary {
+  --el-button-bg-color: var(--color-accent) !important;
+  --el-button-border-color: var(--color-accent) !important;
+  --el-button-hover-bg-color: var(--color-accent-hover) !important;
+  --el-button-hover-border-color: var(--color-accent-hover) !important;
+}
+
+.el-button--success {
+  --el-button-bg-color: var(--color-success) !important;
+  --el-button-border-color: var(--color-success) !important;
+}
+
+.el-button--warning {
+  --el-button-bg-color: var(--color-warning) !important;
+  --el-button-border-color: var(--color-warning) !important;
+}
+
+.el-button--danger {
+  --el-button-bg-color: var(--color-danger) !important;
+  --el-button-border-color: var(--color-danger) !important;
+}
+
+// Scrollbar Styling
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+// Utility Classes
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.accent-text {
+  color: var(--color-accent);
+}
+
+// Animations
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 6px var(--color-success);
+  }
+  50% {
+    box-shadow: 0 0 12px var(--color-success);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+// Focus states for accessibility
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

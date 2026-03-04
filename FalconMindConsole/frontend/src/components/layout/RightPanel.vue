@@ -46,9 +46,14 @@
         <ElProgress :percentage="currentMission.progress" />
         
         <div class="mission-meta">
-          <span>⏱️ {{ currentMission.elapsedTime }}</span>
-          <span>📍 {{ currentMission.waypoint }}</span>
-        </div>
+          <span class="meta-item">
+            <ElIcon><Timer /></ElIcon>
+            {{ currentMission.elapsedTime }}
+          </span>
+          <span class="meta-item">
+            <ElIcon><Location /></ElIcon>
+            {{ currentMission.waypoint }}
+          </span>
       </div>
       
       <div v-else class="no-mission">
@@ -83,6 +88,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import { DataLine, List, Warning, WarningFilled, Timer, Location } from '@element-plus/icons-vue'
 import { computed, ref } from 'vue'
 
 // 模拟遥测数据
@@ -218,6 +225,16 @@ const alerts = ref([
   margin-top: 8px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  
+  .el-icon {
+    font-size: 12px;
+  }
 }
 
 .no-mission {
