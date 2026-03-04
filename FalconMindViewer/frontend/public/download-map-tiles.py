@@ -51,7 +51,7 @@ def download_tile(z, x, y):
         req = urllib.request.Request(
             url,
             headers={
-                'User-Agent': 'Mozilla/5.0 (FalconMindConsole Offline Map Downloader)'
+                'User-Agent': 'Mozilla/5.0 (FalconMindViewer Offline Map Downloader)'
             }
         )
         

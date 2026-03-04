@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """应用配置"""
     
     # 应用信息
-    APP_NAME: str = "FalconMindConsole"
+    APP_NAME: str = "FalconMindViewer"
     VERSION: str = "1.0.0"
     DEBUG: bool = True
     ENVIRONMENT: str = "development"

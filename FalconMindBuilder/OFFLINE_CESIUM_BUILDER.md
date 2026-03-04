@@ -63,7 +63,7 @@ python3 download-map-tiles.py
 
 或者从 Console 项目复制（如果已经下载过）：
 ```bash
-cp -r ../FalconMindConsole/frontend/public/map-tiles/changping-park/* public/map-tiles/changping-park/
+cp -r ../FalconMindViewer/frontend/public/map-tiles/changping-park/* public/map-tiles/changping-park/
 ```
 
 ### 第四步：启动项目
@@ -74,9 +74,9 @@ npm run dev
 
 访问 http://localhost:5173
 
-## 📊 与 FalconMindConsole 的对比
+## 📊 与 FalconMindViewer 的对比
 
-| 特性 | FalconMindConsole | FalconMindBuilder |
+| 特性 | FalconMindViewer | FalconMindBuilder |
 |------|------------------|------------------|
 | Cesium 源 | `/cesium/` (本地) | `/cesium/` (本地) ✅ |
 | 地图源 | `/map-tiles/changping-park/` | `/map-tiles/changping-park/` ✅ |
@@ -248,4 +248,4 @@ location /map-tiles/ {
 
 ---
 
-**完成！** FalconMindBuilder 现在与 FalconMindConsole 使用完全相同的离线 Cesium 配置和昌平公园地图数据。
+**完成！** FalconMindBuilder 现在与 FalconMindViewer 使用完全相同的离线 Cesium 配置和昌平公园地图数据。

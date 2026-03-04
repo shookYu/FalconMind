@@ -121,7 +121,7 @@ FalconMindBuilder/Doc/
 
 | 产品 | 运行位置 | 定位 | 功能 |
 |------|---------|------|------|
-| **FalconMindConsole** | **地面端** (PC/服务器) | 地面控制站 | 集群监控、任务管理、数据分析 |
+| **FalconMindViewer** | **地面端** (PC/服务器) | 地面控制站 | 集群监控、任务管理、数据分析 |
 | **FalconMindBuilder** | **边缘端** (RK3588/UAV) | 可视化开发工具 | 任务编排、即时部署、本地执行 |
 | **FalconMindSDK** | **边缘端** (编译进应用) | 能力库 | 感知、规划、控制、通信 |
 
@@ -184,7 +184,7 @@ FalconMindBuilder/Doc/
 | 术语 | 说明 |
 |------|------|
 | **FalconMindBuilder** | **边缘侧**可视化开发工具，运行在 UAV 上，提供 BS 架构的 Web UI |
-| **FalconMindConsole** | **地面端**控制平台，可集成 Builder 功能，用于集群管理 |
+| **FalconMindViewer** | **地面端**控制平台，可集成 Builder 功能，用于集群管理 |
 | **配置解释执行** | Builder 生成 JSON 配置，SDK FlowExecutor 直接解释执行（无编译）|
 | **三层抽象** | Level 1（配置化）、Level 2（可视化编排）、Level 3（脚本扩展）|
 | **NodeAgent** | UAV 边缘自主代理，也可以看作 Builder 的后端执行引擎 |
@@ -192,7 +192,7 @@ FalconMindBuilder/Doc/
 
 | 术语 | 说明 |
 |------|------|
-| **FalconMindBuilder** | FalconMindConsole 的可视化编排模块 |
+| **FalconMindBuilder** | FalconMindViewer 的可视化编排模块 |
 | **配置解释执行** | Builder 生成 JSON 配置，SDK FlowExecutor 直接解释执行（无编译）|
 | **三层抽象** | Level 1（配置化）、Level 2（可视化编排）、Level 3（脚本扩展）|
 | **NodeAgent** | UAV 边缘自主代理，接收并执行 Builder 配置 |
@@ -241,7 +241,7 @@ FalconMindBuilder/Doc/
 
 ## 🔗 相关资源
 
-- [FalconMindConsole 文档](../FalconMindConsole/docs/)
+- [FalconMindViewer 文档](../FalconMindViewer/docs/)
 - [FalconMindSDK 文档](../FalconMindSDK/Doc/)
 - [NodeAgent 文档](../FalconMindSDK/NodeAgent/README.md)
 - [GitHub 仓库](https://github.com/shookYu/FalconMind)

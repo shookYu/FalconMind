@@ -32,7 +32,7 @@ scrape_configs:
     scrape_interval: 10s
     scrape_timeout: 5s
 
-  # FalconMindConsole Backend API (if available)
+  # FalconMindViewer Backend API (if available)
   - job_name: 'falconmind-console'
     static_configs:
       - targets: ['console-backend:8080']

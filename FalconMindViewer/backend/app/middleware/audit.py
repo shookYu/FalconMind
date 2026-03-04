@@ -1,4 +1,4 @@
-"""Audit logging utilities for FalconMindConsole.
+"""Audit logging utilities for FalconMindViewer.
 
 Provides helpers to log authentication events, critical operations, and
 an API to query audit logs. The audit log is written to a dedicated file

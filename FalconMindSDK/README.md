@@ -125,7 +125,7 @@ autonomy->syncCachedTelemetry();
 ## 文档
 
 - [NodeAgent 完整文档](NodeAgent/README.md)
-- [离线自治架构设计](../FalconMindConsole/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
+- [离线自治架构设计](../FalconMindViewer/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
 - [部署指南](NodeAgent/DEPLOYMENT.md)
 - [快速入门指南](Doc/GETTING_STARTED.md)
 - [API 参考](docs/api/html/index.html)

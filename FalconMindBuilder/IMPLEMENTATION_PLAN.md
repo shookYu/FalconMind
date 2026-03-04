@@ -38,9 +38,9 @@
 - `Doc/04_QuickStart.md` - 快速开始指南
 - `TODO.md` - 开发任务清单（632 行）
 
-#### 2. FalconMindConsole (地面端控制平台)
+#### 2. FalconMindViewer (地面端控制平台)
 
-**位置**: `/home/shook/study/opencode/FalconMindConsole/`
+**位置**: `/home/shook/study/opencode/FalconMindViewer/`
 
 **已完成** ✅:
 - FastAPI 后端（6 个 API 路由，7 个服务）
@@ -791,7 +791,7 @@ def test_export_flow():
 1. [Builder 架构设计](./Doc/03_Architecture_Design.md)
 2. [SDK FlowExecutor 实现](../FalconMindSDK/Doc/FLOW_EXECUTOR_IMPLEMENTATION.md)
 3. [NodeAgent 离线自治](../FalconMindSDK/NodeAgent/README.md)
-4. [Console API 参考](../FalconMindConsole/docs/api/api-reference.md)
+4. [Console API 参考](../FalconMindViewer/docs/api/api-reference.md)
 
 ---
 

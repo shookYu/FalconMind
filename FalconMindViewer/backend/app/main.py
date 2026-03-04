@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动事件
-    logger.info("🚀 FalconMindConsole 启动中...")
+    logger.info("🚀 FalconMindViewer 启动中...")
     
     # Auto-initialize database if needed
     # Set AUTO_INIT_DB=false to disable auto-initialization
@@ -55,11 +55,11 @@ async def lifespan(app: FastAPI):
     yield
     
     # 关闭事件
-    logger.info("👋 FalconMindConsole 关闭中...")
+    logger.info("👋 FalconMindViewer 关闭中...")
 
 
 app = FastAPI(
-    title="FalconMindConsole API",
+    title="FalconMindViewer API",
     description="无人机智能任务统一控制台 API",
     version="1.0.0",
     lifespan=lifespan
@@ -84,7 +84,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": "1.0.0",
-        "service": "FalconMindConsole"
+        "service": "FalconMindViewer"
     }
 
 
@@ -92,7 +92,7 @@ async def health_check():
 async def root():
     """根路径"""
     return {
-        "message": "FalconMindConsole API",
+        "message": "FalconMindViewer API",
         "docs": "/docs",
         "version": "1.0.0"
     }

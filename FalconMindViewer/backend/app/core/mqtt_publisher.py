@@ -1,5 +1,5 @@
 """
-MQTT Publisher Module for FalconMindConsole
+MQTT Publisher Module for FalconMindViewer
 
 负责将任务通过 MQTT 协议下发到 UAV NodeAgent
 """

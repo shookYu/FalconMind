@@ -1,8 +1,8 @@
 """
-测试脚本：验证 ClusterCenter 功能整合到 FalconMindConsole
+测试脚本：验证 ClusterCenter 功能整合到 FalconMindViewer
 
 运行方式:
-    cd FalconMindConsole/backend
+    cd FalconMindViewer/backend
     python tests/test_cluster_integration.py
 
 需要:
@@ -177,7 +177,7 @@ def test_cluster_management_api():
 def run_all_tests():
     """运行所有测试"""
     print("=" * 60)
-    print("FalconMindConsole ClusterCenter 整合测试")
+    print("FalconMindViewer ClusterCenter 整合测试")
     print("=" * 60)
     
     results = []

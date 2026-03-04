@@ -28,13 +28,13 @@
 
 ## 项目概述
 
-FalconMind 是一套完整的无人机智能任务系统，包含地面控制平台（FalconMindConsole）、边缘侧开发工具（FalconMindBuilder）、边缘自治代理（NodeAgent）和软件开发工具包（FalconMindSDK）四大核心组件。**所有飞控连接均为真实实现，通过 MAVLink 协议直接连接 PX4/ArduPilot，无模拟、无 Mock。**
+FalconMind 是一套完整的无人机智能任务系统，包含地面控制平台（FalconMindViewer）、边缘侧开发工具（FalconMindBuilder）、边缘自治代理（NodeAgent）和软件开发工具包（FalconMindSDK）四大核心组件。**所有飞控连接均为真实实现，通过 MAVLink 协议直接连接 PX4/ArduPilot，无模拟、无 Mock。**
 
 ### 🎯 核心能力
 
 | 能力域 | 说明 |
 |--------|------|
-| **🎮 统一控制台** | FalconMindConsole 提供集群管理、实时监控一站式界面 |
+| **🎮 统一控制台** | FalconMindViewer 提供集群管理、实时监控一站式界面 |
 | **🔧 边缘开发** | FalconMindBuilder 提供零代码可视化编排，直连 UAV 即时部署 |
 | **🔌 离线自治** | NodeAgent 实现 P0/P1/P2 三层离线自治，断网仍可自主决策 |
 | **🔗 真实飞控** | MAVLink 直连 PX4/ArduPilot，支持 SITL 仿真和真实硬件 |
@@ -64,7 +64,7 @@ FalconMind 采用**三层架构**设计，各层职责清晰、松耦合：
 │  │                   【业务编排层】 - "任务编排工具"                    │   │
 │  │                                                                     │   │
 │  │   ┌─────────────────────────┐     ┌─────────────────────────┐       │   │
-│  │   │  FalconMindConsole      │     │  FalconMindBuilder      │       │   │
+│  │   │  FalconMindViewer      │     │  FalconMindBuilder      │       │   │
 │  │   │  (地面指控端)            │     │  (边缘内置端)            │       │   │
 │  │   │  ┌─────────────────┐    │     │  ┌─────────────────┐    │       │   │
 │  │   │  │ • 集群监控       │    │     │  │ • 单机编排       │    │       │   │
@@ -116,7 +116,7 @@ FalconMind 采用**三层架构**设计，各层职责清晰、松耦合：
 
 ### 业务编排层对比（Console vs Builder）
 
-| 特性 | **FalconMindConsole** | **FalconMindBuilder** |
+| 特性 | **FalconMindViewer** | **FalconMindBuilder** |
 |------|----------------------|----------------------|
 | **定位** | 地面指控端业务编排工具 | 边缘内置式业务编排工具 |
 | **运行位置** | PC / 服务器 / 云端 | UAV 边缘设备 (RK3588等) |
@@ -147,7 +147,7 @@ FalconMind 采用**三层架构**设计，各层职责清晰、松耦合：
 │  │                   【业务编排层】 - "任务编排工具"                                    │   │
 │  │                                                                                     │   │
 │  │   ┌─────────────────────────────┐     ┌─────────────────────────────┐               │   │
-│  │   │  FalconMindConsole          │     │  FalconMindBuilder          │               │   │
+│  │   │  FalconMindViewer          │     │  FalconMindBuilder          │               │   │
 │  │   │  (地面指控端编排工具)        │     │  (边缘内置式编排工具)        │               │   │
 │  │   │  ┌─────────────────────┐    │     │  ┌─────────────────────┐    │               │   │
 │  │   │  │ • 任务设计器         │    │     │  │ • Flow编排器         │    │               │   │
@@ -213,7 +213,7 @@ FalconMind 采用**三层架构**设计，各层职责清晰、松耦合：
 | 开发模式 | 使用工具 | 开发方式 | 运行位置 | 技术门槛 | 部署方式 | 适用场景 |
 |----------|----------|----------|----------|----------|----------|----------|
 | **Builder 开发** | FalconMindBuilder | 可视化编排 | UAV 边缘 | ⭐ 低 | 配置解释执行，秒级生效 | 现场调试、快速原型、简单任务 |
-| **Console 开发** | FalconMindConsole | 表单+地图配置 | 地面站 | ⭐⭐ 中 | 任务下发到 UAV | 集群任务、集中管理、协同规划 |
+| **Console 开发** | FalconMindViewer | 表单+地图配置 | 地面站 | ⭐⭐ 中 | 任务下发到 UAV | 集群任务、集中管理、协同规划 |
 | **SDK 原生开发** | FalconMindSDK | C++ 手搓代码 | 编译部署 | ⭐⭐⭐⭐ 高 | 编译生成可执行文件 | 复杂算法、性能优化、深度定制 |
 
 #### 模式一：Builder 边缘开发（零代码/低代码）
@@ -494,7 +494,7 @@ pipeline->run();
 | 方式 | 工具 | 运行位置 | 特点 | 适用场景 |
 |------|------|---------|------|---------|
 | **Builder 边缘开发** | FalconMindBuilder | UAV 边缘设备 | 可视化编排、即时部署、直连 UAV | 现场调试、快速原型、单 UAV |
-| **Console 地面开发** | FalconMindConsole | PC/服务器 | 集群管理、任务分发、集中监控 | 多 UAV 管理、集群任务 |
+| **Console 地面开发** | FalconMindViewer | PC/服务器 | 集群管理、任务分发、集中监控 | 多 UAV 管理、集群任务 |
 | **SDK 原生开发** | FalconMindSDK | 编译部署 | 灵活度最高、算法定制 | 复杂定制、算法研究 |
 
 ---
@@ -586,7 +586,7 @@ UAV-001 NodeAgent：
 
 ## 💡 核心组件
 
-### 1. FalconMindConsole (地面控制平台)
+### 1. FalconMindViewer (地面控制平台)
 
 统一控制台，负责任务编排、UAV 集群管理和实时监控。
 
@@ -605,7 +605,7 @@ UAV-001 NodeAgent：
 
 **快速开始**
 ```bash
-cd FalconMindConsole
+cd FalconMindViewer
 ./start-dev.sh    # 一键启动开发环境
 # 访问 http://localhost:8080
 # 默认账号: admin / admin123
@@ -814,10 +814,10 @@ docker-compose up -d
 # 默认显示昌平公园区域
 ```
 
-### 2. 启动 FalconMindConsole（地面站）
+### 2. 启动 FalconMindViewer（地面站）
 
 ```bash
-cd FalconMindConsole
+cd FalconMindViewer
 ./start-dev.sh
 # 访问 http://localhost:8080
 ```
@@ -852,13 +852,13 @@ cd ../scenarios/01_single_lawn_mower/build
 ## 📚 文档导航
 
 ### 架构设计
-- [FalconMindConsole 架构](FalconMindConsole/docs/architecture/system-architecture-overview.md)
+- [FalconMindViewer 架构](FalconMindViewer/docs/architecture/system-architecture-overview.md)
 - [FalconMindBuilder 架构](FalconMindBuilder/Doc/) - 8 个详细设计文档
-- [离线自治架构 (P0/P1/P2)](FalconMindConsole/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md) ⭐
+- [离线自治架构 (P0/P1/P2)](FalconMindViewer/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md) ⭐
 - [NodeAgent 详细设计](FalconMindSDK/NodeAgent/README.md)
 
 ### API 文档
-- [Console API 参考](FalconMindConsole/docs/api/api-reference.md)
+- [Console API 参考](FalconMindViewer/docs/api/api-reference.md)
 - [Builder API](FalconMindBuilder/IMPLEMENTATION_STATUS.md)
 - [SDK Core API](FalconMindSDK/Doc/SDK_core_API.md)
 - [SDK C API](FalconMindSDK/include/falconmind/sdk/c_api/)
@@ -866,7 +866,7 @@ cd ../scenarios/01_single_lawn_mower/build
 ### 部署指南
 - [Builder 部署](FalconMindBuilder/Doc/04_QuickStart.md)
 - [NodeAgent 部署](FalconMindSDK/NodeAgent/DEPLOYMENT.md)
-- [Console 部署](FalconMindConsole/docs/deployment/deployment-guide.md)
+- [Console 部署](FalconMindViewer/docs/deployment/deployment-guide.md)
 
 ### 开发资源
 - [Builder 实施状态](FalconMindBuilder/IMPLEMENTATION_STATUS.md)
@@ -878,7 +878,7 @@ cd ../scenarios/01_single_lawn_mower/build
 
 ```
 FalconMind/                          # 项目根目录
-├── FalconMindConsole/               # 地面控制平台
+├── FalconMindViewer/               # 地面控制平台
 │   ├── frontend/                    # Vue3 前端
 │   ├── backend/                     # FastAPI 后端
 │   └── docs/                        # 架构/API/部署文档

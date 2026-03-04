@@ -55,7 +55,7 @@ FalconMindBuilder/frontend/src/
 虽然 Builder 项目主要修复了 Emoji 问题，但建议进一步优化：
 
 #### 颜色方案统一
-当前 Builder 使用 Element Plus 默认浅色主题，与 FalconMindConsole 的深色主题不同。
+当前 Builder 使用 Element Plus 默认浅色主题，与 FalconMindViewer 的深色主题不同。
 
 **建议方案 A：保持浅色但统一强调色**
 ```scss
@@ -121,7 +121,7 @@ grep -r "emoji\|🔋\|⏱️\|📍\|⚡\|✅\|❌\|⚠️\|📊\|✏️\|📋\|�
 
 ### 6. 与 Console 的对比
 
-| 特性 | FalconMindConsole | FalconMindBuilder |
+| 特性 | FalconMindViewer | FalconMindBuilder |
 |------|------------------|------------------|
 | 主题 | 深色 OLED | 浅色默认 |
 | Emoji | ✅ 已移除 | ✅ 已移除 |
@@ -142,7 +142,7 @@ grep -r "emoji\|🔋\|⏱️\|📍\|⚡\|✅\|❌\|⚠️\|📊\|✏️\|📋\|�
 
 ### 3. 设计系统实施（已完成 ✅）
 
-创建了完整的工业橙色设计系统，与 FalconMindConsole 保持一致：
+创建了完整的工业橙色设计系统，与 FalconMindViewer 保持一致：
 
 #### 新增文件
 
@@ -246,4 +246,4 @@ grep "design-system.scss" src/main.ts
 
 ---
 
-**总结**: FalconMindBuilder 已完成全面的 UI/UX 改进，包括移除 22 处 Emoji、实施工业橙色设计系统、统一品牌风格。现在与 FalconMindConsole 在视觉上保持一致。
+**总结**: FalconMindBuilder 已完成全面的 UI/UX 改进，包括移除 22 处 Emoji、实施工业橙色设计系统、统一品牌风格。现在与 FalconMindViewer 在视觉上保持一致。

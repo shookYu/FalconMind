@@ -136,7 +136,7 @@
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌──────────────────────┐          ┌──────────────────────────────┐         │
-│  │  FalconMindConsole   │          │      UAV NodeAgent           │         │
+│  │  FalconMindViewer   │          │      UAV NodeAgent           │         │
 │  │  (Python/FastAPI)    │          │     (C++17)                  │         │
 │  │                      │          │                              │         │
 │  │  ✓ MQTT Publisher    │ MQTT     │  ✓ SdkLoader (dlopen)        │         │
@@ -200,7 +200,7 @@ ldd build/test_sdk_loader | grep falcon  # 应该无输出
 
 ```bash
 # 1. 启动 Console 开发环境
-cd FalconMindConsole
+cd FalconMindViewer
 ./start-dev.sh
 
 # 2. 访问任务管理
@@ -310,7 +310,7 @@ FalconMindSDK/NodeAgent/src/
 
 ### B 部分 (业务链路)
 ```
-FalconMindConsole/backend/app/
+FalconMindViewer/backend/app/
 ├── core/mqtt_publisher.py      # MQTT 发布
 └── routers/dispatch.py         # 下发路由
 
@@ -328,7 +328,7 @@ FalconMindSDK/
 
 ### D 部分 (地图标绘基础)
 ```
-FalconMindConsole/frontend/src/
+FalconMindViewer/frontend/src/
 ├── composables/
 │   ├── useCesium.ts            # 清理优化 (86行)
 │   ├── useMapDrawing.ts        # 地图绘制 (277行 → 486行)
@@ -344,7 +344,7 @@ FalconMindConsole/frontend/src/
 
 ### E 部分 (后续功能完善)
 ```
-FalconMindConsole/frontend/src/
+FalconMindViewer/frontend/src/
 ├── composables/
 │   ├── useUAVRealtime.ts       # 实时 UAV 数据 (260行) ⭐
 │   ├── useMapLayers.ts         # 图层管理 (205行) ⭐
@@ -377,7 +377,7 @@ ls install/x86/lib/libfalconmind_sdk.a
 ### D + E 部分验证
 ```bash
 # 1. 启动前端开发服务器
-cd FalconMindConsole/frontend
+cd FalconMindViewer/frontend
 npm install
 npm run dev
 

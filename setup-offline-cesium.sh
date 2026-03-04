@@ -9,8 +9,8 @@ echo ""
 
 # Function to setup Console project
 setup_console() {
-  echo "Setting up FalconMindConsole..."
-  cd /home/shook/study/opencode/FalconMindConsole/frontend
+  echo "Setting up FalconMindViewer..."
+  cd /home/shook/study/opencode/FalconMindViewer/frontend
   
   # Install Cesium
   echo "Installing Cesium..."
@@ -50,8 +50,8 @@ download_maps() {
   echo ""
   
   # Download for Console
-  if [ -f "/home/shook/study/opencode/FalconMindConsole/frontend/public/download-map-tiles.py" ]; then
-    cd /home/shook/study/opencode/FalconMindConsole/frontend/public
+  if [ -f "/home/shook/study/opencode/FalconMindViewer/frontend/public/download-map-tiles.py" ]; then
+    cd /home/shook/study/opencode/FalconMindViewer/frontend/public
     python3 download-map-tiles.py
   fi
   
@@ -59,7 +59,7 @@ download_maps() {
   echo ""
   echo "Copying map tiles to Builder..."
   mkdir -p /home/shook/study/opencode/FalconMindBuilder/frontend/public/map-tiles/changping-park
-  cp -r /home/shook/study/opencode/FalconMindConsole/frontend/public/map-tiles/changping-park/* \
+  cp -r /home/shook/study/opencode/FalconMindViewer/frontend/public/map-tiles/changping-park/* \
         /home/shook/study/opencode/FalconMindBuilder/frontend/public/map-tiles/changping-park/ 2>/dev/null || echo "Map tiles already exist in Builder"
   
   echo "✅ Map tiles setup complete!"
@@ -87,7 +87,7 @@ case $choice in
     echo "=========================================="
     echo ""
     echo "Next steps:"
-    echo "1. cd FalconMindConsole/frontend && npm run dev"
+    echo "1. cd FalconMindViewer/frontend && npm run dev"
     echo "2. cd FalconMindBuilder/frontend && npm run dev"
     ;;
   2)
@@ -118,6 +118,6 @@ esac
 
 echo ""
 echo "Verification:"
-echo "- Console Cesium: $(ls /home/shook/study/opencode/FalconMindConsole/frontend/public/cesium/Cesium.js 2>/dev/null && echo '✅' || echo '❌')"
-echo "- Console Map Tiles: $(ls /home/shook/study/opencode/FalconMindConsole/frontend/public/map-tiles/changping-park/12/ 2>/dev/null | wc -l) tiles"
+echo "- Console Cesium: $(ls /home/shook/study/opencode/FalconMindViewer/frontend/public/cesium/Cesium.js 2>/dev/null && echo '✅' || echo '❌')"
+echo "- Console Map Tiles: $(ls /home/shook/study/opencode/FalconMindViewer/frontend/public/map-tiles/changping-park/12/ 2>/dev/null | wc -l) tiles"
 echo "- Builder Cesium: $(ls /home/shook/study/opencode/FalconMindBuilder/frontend/public/cesium/Cesium.js 2>/dev/null && echo '✅' || echo '❌')"

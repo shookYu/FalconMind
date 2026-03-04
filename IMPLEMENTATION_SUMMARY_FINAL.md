@@ -9,12 +9,12 @@
 
 本次会话完成了两大核心任务：
 
-1. **ClusterCenter → FalconMindConsole 整合** ✅ 完成
+1. **ClusterCenter → FalconMindViewer 整合** ✅ 完成
 2. **NodeAgent 离线自治系统验证** ✅ 已存在（15,000+ 行代码）
 
 ---
 
-## ✅ 第一部分：ClusterCenter 整合到 FalconMindConsole
+## ✅ 第一部分：ClusterCenter 整合到 FalconMindViewer
 
 ### 迁移统计
 
@@ -203,9 +203,9 @@ sudo systemctl start nodeagent
 
 **答案**: ✅ **已完成整合**
 
-- ClusterCenter 的核心功能已迁移到 FalconMindConsole
+- ClusterCenter 的核心功能已迁移到 FalconMindViewer
 - 新增 10 个文件，1,200+ 行代码，22 个 API 端点
-- 现在启动 FalconMindConsole 即可使用完整的集群管理功能
+- 现在启动 FalconMindViewer 即可使用完整的集群管理功能
 - 无需再单独部署 ClusterCenter 服务
 
 ### 问题 2: 断网情况下如何保证任务执行？
@@ -233,10 +233,10 @@ sudo systemctl start nodeagent
 
 ## 📁 关键文件位置
 
-### FalconMindConsole（后端）
+### FalconMindViewer（后端）
 
 ```
-FalconMindConsole/backend/
+FalconMindViewer/backend/
 ├── app/
 │   ├── models/
 │   │   ├── cluster_mission.py      # 集群任务模型
@@ -280,9 +280,9 @@ FalconMindSDK/NodeAgent/
 
 ### 立即可用
 
-1. **启动 FalconMindConsole**
+1. **启动 FalconMindViewer**
    ```bash
-   cd FalconMindConsole
+   cd FalconMindViewer
    docker-compose up -d
    # 访问 http://localhost:8080
    ```
@@ -314,7 +314,7 @@ FalconMindSDK/NodeAgent/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  FalconMindConsole (地面层) - "指挥中心"                 │
+│  FalconMindViewer (地面层) - "指挥中心"                 │
 │  ✅ ClusterCenter 功能已整合                              │
 │  ✅ 22 个集群管理 API                                     │
 │  ✅ 12 个离线任务 API                                     │
@@ -341,7 +341,7 @@ FalconMindSDK/NodeAgent/
 
 | 组件 | 代码行数 | 测试 | 文件数 |
 |------|----------|------|--------|
-| FalconMindConsole (新增) | ~1,200 | 集成中 | 10 |
+| FalconMindViewer (新增) | ~1,200 | 集成中 | 10 |
 | NodeAgent (已存在) | 15,000+ | 250+ | 30+ |
 | **总计** | **16,200+** | **250+** | **40+** |
 
@@ -363,9 +363,9 @@ FalconMindSDK/NodeAgent/
 ## 📖 参考文档
 
 - [NodeAgent 完整文档](FalconMindSDK/NodeAgent/README.md)
-- [离线自治架构设计](FalconMindConsole/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
+- [离线自治架构设计](FalconMindViewer/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
 - [部署指南](FalconMindSDK/NodeAgent/DEPLOYMENT.md)
-- [迁移计划](FalconMindConsole/docs/migration/CLUSTERCENTER_MIGRATION_PLAN.md)
+- [迁移计划](FalconMindViewer/docs/migration/CLUSTERCENTER_MIGRATION_PLAN.md)
 
 ---
 

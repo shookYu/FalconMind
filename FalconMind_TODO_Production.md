@@ -11,7 +11,7 @@
 
 | 组件 | 状态 | 代码量 | 完成度 | 关键缺口 |
 |------|------|--------|--------|----------|
-| **FalconMindConsole** | ✅ Production | ~10,000 行 | 82% | Console端到端测试 |
+| **FalconMindViewer** | ✅ Production | ~10,000 行 | 82% | Console端到端测试 |
 | **FalconMindBuilder** | ✅ Production | ~12,000 行 | 92% | 硬件验证 |
 | **NodeAgent** | ✅ Production | 15,000+ 行 | 90% | 真实UAV集成测试 |
 | **FalconMindSDK** | ✅ Production | 25,000+ 行 | 85% | RKNN硬件验证 |
@@ -207,7 +207,7 @@
 - [ ] 内存泄漏检查 (2天)
 - [ ] 后端缓存策略 (2天)
 
-### FalconMindConsole (当前 70% → 目标 95%)
+### FalconMindViewer (当前 70% → 目标 95%)
 
 #### 集群管理
 - [x] Voronoi分区可视化 (已完成)

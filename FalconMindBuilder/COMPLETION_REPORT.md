@@ -12,7 +12,7 @@
 | 任务 | 状态 | 说明 |
 |------|------|------|
 | 学习 FalconMindBuilder | ✅ | 完成代码和文档分析 |
-| 学习 FalconMindConsole | ✅ | 完成 Backend/Frontend 架构分析 |
+| 学习 FalconMindViewer | ✅ | 完成 Backend/Frontend 架构分析 |
 | 学习 FalconMindSDK | ✅ | 完成 FlowExecutor 和 NodeFactory 分析 |
 | 学习 NodeAgent | ✅ | 完成离线自治系统分析 |
 | 识别过时文档 | ✅ | 更新架构关系文档 |

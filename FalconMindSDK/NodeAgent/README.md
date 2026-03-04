@@ -283,7 +283,7 @@ metrics:
 ## 📚 文档
 
 - [部署指南](DEPLOYMENT.md) - 完整部署说明 (Docker/Systemd)
-- [离线自治架构设计](../FalconMindConsole/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
+- [离线自治架构设计](../FalconMindViewer/docs/architecture/OFFLINE_AUTONOMY_DESIGN_V2.md)
 - [最终交付文档](FINAL_DELIVERY.md) - 项目完成总结
 - [API 文档](include/nodeagent/) - 头文件注释
 
