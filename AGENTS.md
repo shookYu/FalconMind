@@ -25,6 +25,21 @@ make -j4
 make install
 ```
 
+### NodeAgent (Standalone Mode)
+```bash
+# 1. Build SDK as shared library
+cd FalconMindSDK/build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+make -j4
+
+# 2. Build NodeAgent independently
+cd ../NodeAgent/build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DNODEAGENT_STANDALONE=ON
+make -j4
+```
+
+## Test Commands
+
 ### Run All Tests
 ```bash
 cd FalconMindSDK/build
@@ -35,26 +50,27 @@ ctest --output-on-failure
 ```bash
 cd FalconMindSDK/build
 ctest -R falconmind_sdk_core_tests --output-on-failure
-# OR run executable directly:
+# OR run directly:
 ./falconmind_sdk_core_tests
 ```
 
-### Run Test Executable Directly
-```bash
-cd FalconMindSDK/build
-./falconmind_sdk_core_tests
-./falconmind_flow_executor_tests
-./falconmind_node_factory_tests
-./falconmind_pipeline_link_tests
-```
+### Test Executables (SDK)
+| Test | Executable |
+|------|------------|
+| Core Tests | `falconmind_sdk_core_tests` |
+| Flow Executor | `falconmind_flow_executor_tests` |
+| Node Factory | `falconmind_node_factory_tests` |
+| Detection | `falconmind_detection_packet_tests` |
+| YOLO Pre/Post | `falconmind_yolo_prepost_tests` |
+| Tracker | `falconmind_tracker_tests` |
+| Pipeline Link | `falconmind_pipeline_link_tests` |
+| E2E Tests | `falconmind_flow_executor_e2e_tests` |
 
-### Build Single Example
+### NodeAgent Tests
 ```bash
-cd FalconMindSDK/examples/01_pipeline_basic/x86
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j4
-./01_pipeline_basic_x86
+cd FalconMindSDK/NodeAgent/build
+./nodeagent_unit_tests
+./nodeagent_benchmarks
 ```
 
 ## Code Style & Formatting
@@ -66,11 +82,11 @@ cd FalconMindSDK
 ./format-code.sh check     # Check formatting (CI mode)
 ```
 
-### Generate Coverage Report
+### Coverage Report
 ```bash
 cd FalconMindSDK
 ./coverage-report.sh html     # HTML report
-./coverage-report.sh xml      # XML report
+./coverage-report.sh xml      # XML report (CI)
 ./coverage-report.sh summary  # Console summary
 ```
 
@@ -80,27 +96,32 @@ cd FalconMindSDK
 - **C++ Standard**: C++17
 - **Build System**: CMake 3.16+
 - **Target Platforms**: x86_64, ARM64 (RK3588/RK3576/RV1126B)
+- **Line Length**: 120 columns
+- **Indent**: 4 spaces (no tabs)
 
 ### Naming Conventions
-- **Classes**: PascalCase (`Pipeline`, `Node`, `Pad`)
-- **Functions**: camelCase (`addNode()`, `process()`)
-- **Private Members**: snake_case with trailing underscore (`state_`, `nodes_`)
-- **File Names**: PascalCase matching class names
-- **Constants**: kPascalCase (preferred)
+| Type | Convention | Example |
+|------|------------|---------|
+| Classes | PascalCase | `Pipeline`, `Node`, `Pad` |
+| Functions | camelCase | `addNode()`, `process()` |
+| Private Members | snake_case with trailing underscore | `state_`, `nodes_` |
+| Local Variables | snake_case | `config`, `result` |
+| File Names | PascalCase matching class | `Pipeline.cpp`, `Node.h` |
+| Constants | kPascalCase | `kMaxNodes`, `kDefaultTimeout` |
+| Macros | UPPER_SNAKE_CASE | `FALCONMINDSDK_BUILD_TESTS` |
 
 ### Include Style (Priority Order)
 ```cpp
 // 1. Project headers (priority 2)
 #include "falconmind/sdk/core/Pipeline.h"
-#include "falconmind/sdk/core/Node.h"
 
-// 2. System headers (priority 4)
+// 2. Third-party headers (priority 3)
+#include "nlohmann/json.hpp"
+
+// 3. System headers (priority 4)
 #include <iostream>
 #include <memory>
-#include <unordered_map>
-
-// 3. Third-party headers (priority 3 or 4)
-#include "nlohmann/json.hpp"
+#include <vector>
 ```
 
 ### Class Structure
@@ -110,7 +131,6 @@ public:
     explicit Pipeline(const PipelineConfig& cfg);
     virtual ~Pipeline() = default;
     std::string id() const;
-    
     bool addNode(const std::shared_ptr<Node>& node);
     virtual void process() = 0;
 
@@ -124,18 +144,18 @@ private:
 ```
 
 ### Formatting Rules (from .clang-format)
-- **Indent**: 4 spaces (no tabs)
-- **Line length**: 120 columns
 - **Braces**: Attach style (same line)
-- **Pointer alignment**: Left (`Type* ptr`)
-- **Template declarations**: Always break before
-- **Short functions**: Inline only
+- **Pointer Alignment**: Left (`Type* ptr`)
+- **Template Declarations**: Always break before
+- **Short Functions**: Inline only
+- **Include Blocks**: Regroup and sort by priority
 
 ### Error Handling
 - Use `std::optional<T>` for values that may not exist
 - Use `std::shared_ptr<T>` for shared ownership
 - Return `bool` for success/failure
 - Prefer `assert()` for internal invariants
+- Never suppress type errors with `as any`, `@ts-ignore`, `@ts-expect-error`
 
 ### Memory Management
 - Use smart pointers: `std::shared_ptr<>`, `std::unique_ptr<>`
@@ -156,53 +176,19 @@ private:
 #endif
 ```
 
-## Project Structure
+## CMake Options
 
-```
-FalconMindSDK/
-├── include/falconmind/sdk/    # Public headers
-│   ├── core/                  # Pipeline, Node, Pad, Bus, Caps
-│   ├── perception/            # Detection, Tracking, Inference
-│   ├── sensors/               # Camera, IMU, GNSS
-│   ├── flight/                # MAVLink flight control
-│   └── mission/               # Waypoints, Search patterns
-├── src/                       # Implementation
-├── tests/                     # Unit tests
-│   ├── core_pipeline_tests.cpp
-│   ├── test_flow_executor.cpp
-│   ├── test_node_factory.cpp
-│   └── ...
-├── examples/                  # Example programs (01-41+)
-├── scenarios/                 # PoC scenario implementations
-├── python/                    # Python bindings
-├── NodeAgent/                 # NodeAgent subproject
-└── 3rd/                       # Third-party dependencies
-```
-
-## Test Commands Reference
-
-| Test Name | Command |
-|-----------|---------|
-| Core Tests | `ctest -R falconmind_sdk_core_tests` |
-| Flow Executor | `ctest -R falconmind_flow_executor_tests` |
-| Node Factory | `ctest -R falconmind_node_factory_tests` |
-| Detection | `ctest -R falconmind_detection_packet_tests` |
-| YOLO Pre/Post | `ctest -R falconmind_yolo_prepost_tests` |
-| Tracker | `ctest -R falconmind_tracker_tests` |
-| Pipeline Link | `ctest -R falconmind_pipeline_link_tests` |
-| E2E Tests | `ctest -R falconmind_flow_executor_e2e_tests` |
-
-## Backend CMake Options
-
-Enable optional inference backends:
-- `FALCONMINDSDK_BUILD_RKNN_BACKEND=ON` - RKNN backend for Rockchip NPU (default: ON)
-- `FALCONMINDSDK_BUILD_ROS2=ON` - ROS2 integration
-- `FALCONMINDSDK_ENABLE_COVERAGE=ON` (for coverage)
+| Option | Description | Default |
+|--------|-------------|---------|
+| `FALCONMINDSDK_BUILD_TESTS` | Build test programs | ON |
+| `FALCONMINDSDK_BUILD_PYTHON` | Build Python bindings | ON |
+| `FALCONMINDSDK_BUILD_NODEAGENT` | Build NodeAgent | ON |
+| `FALCONMINDSDK_BUILD_RKNN_BACKEND` | RKNN backend for Rockchip | ON |
+| `FALCONMINDSDK_BUILD_ROS2` | ROS2 integration | OFF |
+| `FALCONMINDSDK_ENABLE_COVERAGE` | Coverage reporting | OFF |
+| `FALCONMINDSDK_OFFLINE_BUILD` | Offline mode (no downloads) | OFF |
 
 ## Installation Paths
-
-## Installation Paths
-
 - x86: `install/x86/` (lib/, include/)
 - ARM64: `install/arm64/` (lib/, include/)
 
@@ -224,4 +210,53 @@ pipeline->link("source", "out", "sink", "in");
 NodeFactory::registerNodeType("MyNode", [](const std::string& id, const void*) {
     return std::make_shared<MyNode>(id);
 });
+```
+
+## Available Skills & Tools
+
+### UI UX Pro Max Skill (User-Installed)
+Location: `/home/shook/.config/opencode/skill/ui-ux-pro-max-skill/`
+
+AI-powered design intelligence toolkit for professional UI/UX:
+
+| Resource | Count |
+|----------|-------|
+| UI Styles | 67 (Glassmorphism, Brutalism, Neumorphism, etc.) |
+| Color Palettes | 96 industry-specific palettes |
+| Font Pairings | 57 typography combinations |
+| Reasoning Rules | 100 industry-specific design rules |
+| Tech Stacks | 13 (React, Vue, Tailwind, shadcn, etc.) |
+
+**Usage:**
+```bash
+# Search design recommendations
+python3 /home/shook/.config/opencode/skill/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py "glassmorphism" --domain style
+
+# Generate complete design system
+python3 /home/shook/.config/opencode/skill/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py "SaaS dashboard" --design-system -p "MyApp"
+```
+
+**Domains:** `product`, `style`, `typography`, `color`, `landing`, `chart`, `ux`
+
+**Stacks:** `html-tailwind`, `react`, `nextjs`, `astro`, `vue`, `nuxtjs`, `shadcn`, `svelte`, `swiftui`, `react-native`, `flutter`, `jetpack-compose`
+
+## Project Structure
+```
+FalconMindSDK/
+├── include/falconmind/sdk/    # Public headers
+│   ├── core/                  # Pipeline, Node, Pad, Bus, Caps
+│   ├── perception/            # Detection, Tracking, Inference
+│   ├── sensors/               # Camera, IMU, GNSS
+│   ├── flight/                # MAVLink flight control
+│   └── mission/               # Waypoints, Search patterns
+├── src/                       # Implementation
+├── tests/                     # Unit tests
+├── NodeAgent/                 # Offline autonomy (P0/P1/P2)
+│   ├── src/                   # C++ source (15,000+ lines)
+│   ├── tests/                 # Unit tests (250+)
+│   ├── docker/                # Docker deployment
+│   └── systemd/               # Systemd deployment
+├── examples/                  # Example programs (01-41+)
+├── scenarios/                 # PoC scenario implementations
+└── 3rd/                       # Third-party dependencies
 ```
