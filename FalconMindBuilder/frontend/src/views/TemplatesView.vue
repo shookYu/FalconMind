@@ -50,7 +50,10 @@
         @click="selectTemplate(template)"
       >
         <div class="card-header">
-          <div class="template-icon">{{ template.icon || '📋' }}</div>
+          <div class="template-icon">
+            <el-icon v-if="!template.icon"><Document /></el-icon>
+            <span v-else>{{ template.icon }}</span>
+          </div>
           <el-tag :type="getComplexityType(template.complexity)" size="small">
             {{ getComplexityLabel(template.complexity) }}
           </el-tag>
@@ -92,7 +95,7 @@ import { useRouter } from 'vue-router'
 import { useTemplateStore } from '@stores/template'
 import { useFlowStore } from '@stores/flow'
 import TemplateWizard from '@components/TemplateWizard.vue'
-import { Search } from '@element-plus/icons-vue'
+import { Search, Document } from '@element-plus/icons-vue'
 import type { FlowTemplate, TemplateCategory, TemplateComplexity } from '@types/template'
 
 const router = useRouter()

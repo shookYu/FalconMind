@@ -1,7 +1,7 @@
 <template>
   <div class="home-view">
     <div class="header">
-      <h1>🚁 FalconMindBuilder</h1>
+      <h1><el-icon><Aim /></el-icon> FalconMindBuilder</h1>
       <p>UAV 边缘侧可视化开发工具</p>
     </div>
 
@@ -84,6 +84,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Aim } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectsApi, type Project, type ProjectCreate } from '@/api/projects'
 

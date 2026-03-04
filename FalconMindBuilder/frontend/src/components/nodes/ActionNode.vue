@@ -1,7 +1,9 @@
 <template>
   <div class="action-node" :class="{ selected: data.selected }">
     <div class="node-header">
-      <div class="node-icon">🎬</div>
+      <div class="node-icon">
+        <el-icon><VideoPlay /></el-icon>
+      </div>
       <div class="node-title">{{ data.label || '动作' }}</div>
       <div class="node-actions" v-if="data.selected">
         <el-button type="danger" size="small" circle @click="onDelete">
@@ -51,7 +53,7 @@
 
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Delete } from '@element-plus/icons-vue'
+import { Delete, VideoPlay } from '@element-plus/icons-vue'
 
 interface NodeData {
   type: string
@@ -94,15 +96,15 @@ const onDelete = () => {
 <style scoped>
 .action-node {
   min-width: 180px;
-  background: white;
-  border: 2px solid #409eff;
+  background: var(--color-bg-primary);
+  border: 2px solid var(--color-primary);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .action-node.selected {
-  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3);
 }
 
 .node-header {
@@ -110,8 +112,8 @@ const onDelete = () => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #ecf5ff;
-  border-bottom: 1px solid #d9ecff;
+  background: var(--color-primary-50);
+  border-bottom: 1px solid rgba(249, 115, 22, 0.2);
 }
 
 .node-icon {
@@ -121,7 +123,7 @@ const onDelete = () => {
 .node-title {
   flex: 1;
   font-weight: 600;
-  color: #409eff;
+  color: var(--color-primary);
   font-size: 14px;
 }
 
@@ -136,7 +138,7 @@ const onDelete = () => {
 
 .action-type {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 

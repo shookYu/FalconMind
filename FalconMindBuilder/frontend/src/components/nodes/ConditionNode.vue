@@ -1,7 +1,9 @@
 <template>
   <div class="condition-node" :class="{ selected: data.selected }">
     <div class="node-header">
-      <div class="node-icon">❓</div>
+      <div class="node-icon">
+        <el-icon><QuestionFilled /></el-icon>
+      </div>
       <div class="node-title">{{ data.label || '条件' }}</div>
       <div class="node-actions" v-if="data.selected">
         <el-button type="danger" size="small" circle @click="onDelete">
@@ -39,7 +41,7 @@
 
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Delete } from '@element-plus/icons-vue'
+import { Delete, QuestionFilled } from '@element-plus/icons-vue'
 
 interface NodeData {
   type: string
@@ -96,15 +98,15 @@ const onDelete = () => {
 <style scoped>
 .condition-node {
   min-width: 180px;
-  background: white;
-  border: 2px solid #e6a23c;
+  background: var(--color-bg-primary);
+  border: 2px solid var(--color-warning);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .condition-node.selected {
-  box-shadow: 0 0 0 3px rgba(230, 162, 60, 0.3);
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.3);
 }
 
 .node-header {
@@ -112,8 +114,8 @@ const onDelete = () => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #fdf6ec;
-  border-bottom: 1px solid #faecd8;
+  background: var(--color-warning-bg);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.2);
 }
 
 .node-icon {
@@ -123,7 +125,7 @@ const onDelete = () => {
 .node-title {
   flex: 1;
   font-weight: 600;
-  color: #e6a23c;
+  color: var(--color-warning-dark);
   font-size: 14px;
 }
 
@@ -138,7 +140,7 @@ const onDelete = () => {
 
 .condition-type {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 
@@ -153,17 +155,17 @@ const onDelete = () => {
 }
 
 .handle-true :deep(.vue-flow__handle) {
-  background: #67c23a;
+  background: var(--color-success);
 }
 
 .handle-false :deep(.vue-flow__handle) {
-  background: #f56c6c;
+  background: var(--color-danger);
 }
 
 .handle-label {
   position: absolute;
   right: 20px;
   font-size: 12px;
-  color: #606266;
+  color: var(--color-text-secondary);
 }
 </style>

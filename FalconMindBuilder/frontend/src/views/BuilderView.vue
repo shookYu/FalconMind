@@ -151,7 +151,12 @@ const goToSettings = () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f7fa;
+  .builder-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--color-bg-secondary);
+}
 }
 
 .builder-header {
@@ -160,7 +165,8 @@ const goToSettings = () => {
   justify-content: space-between;
   height: 56px;
   padding: 0 20px;
-  background: #fff;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
   border-bottom: 1px solid #e4e7ed;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 
@@ -175,7 +181,7 @@ const goToSettings = () => {
       gap: 8px;
       font-size: 18px;
       font-weight: 600;
-      color: #409eff;
+      color: var(--color-primary);
 
       .el-icon {
         font-size: 24px;
@@ -184,14 +190,14 @@ const goToSettings = () => {
 
     .project-name {
       font-size: 14px;
-      color: #606266;
+      color: var(--color-text-secondary);
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: var(--radius-md);
       transition: background 0.2s;
 
       &:hover {
-        background: #f5f7fa;
+        background: var(--color-bg-tertiary);
       }
 
       .el-input {
@@ -217,29 +223,50 @@ const goToSettings = () => {
   display: flex;
   flex: 1;
   overflow: hidden;
+.builder-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
 }
 
 .builder-sidebar {
   width: 280px;
-  background: #fff;
+  background: var(--color-bg-primary);
+  border-right: 1px solid var(--color-border);
   border-right: 1px solid #e4e7ed;
   overflow-y: auto;
 }
 
 .builder-canvas {
+  .builder-canvas {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
   position: relative;
   overflow: hidden;
 }
 
 .builder-properties {
   width: 320px;
-  background: #fff;
+  background: var(--color-bg-primary);
+  border-left: 1px solid var(--color-border);
   border-left: 1px solid #e4e7ed;
   overflow-y: auto;
 }
 
 .builder-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 20px;
+  background: var(--color-bg-primary);
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -265,15 +292,15 @@ const goToSettings = () => {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #67c23a;
+      background: var(--color-success);
     }
 
     &.disconnected .status-dot {
-      background: #909399;
+      background: var(--color-text-muted);
     }
 
     &.error .status-dot {
-      background: #f56c6c;
+      background: var(--color-danger);
     }
   }
 }

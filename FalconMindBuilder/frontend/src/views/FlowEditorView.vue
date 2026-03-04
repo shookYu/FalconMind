@@ -37,7 +37,7 @@
       <div class="component-library">
         <h3>组件库</h3>
         <el-collapse accordion>
-          <el-collapse-item title="⚡ 触发器" name="trigger">
+          <el-collapse-item title="触发器" name="trigger">
             <div 
               class="component-item"
               v-for="component in triggerComponents"
@@ -49,7 +49,7 @@
               <span class="component-label">{{ component.label }}</span>
             </div>
           </el-collapse-item>
-          <el-collapse-item title="🎬 动作" name="action">
+          <el-collapse-item title="动作" name="action">
             <div 
               class="component-item"
               v-for="component in actionComponents"
@@ -61,7 +61,7 @@
               <span class="component-label">{{ component.label }}</span>
             </div>
           </el-collapse-item>
-          <el-collapse-item title="❓ 条件" name="condition">
+          <el-collapse-item title="条件" name="condition">
             <div 
               class="component-item"
               v-for="component in conditionComponents"
@@ -106,21 +106,21 @@
           
           <template #node-trigger="{ data }">
             <div class="custom-node trigger-node">
-              <div class="node-header">⚡ {{ data.label }}</div>
+              <div class="node-header">{{ data.label }}</div>
               <div class="node-body">{{ data.type }}</div>
             </div>
           </template>
           
           <template #node-action="{ data }">
             <div class="custom-node action-node">
-              <div class="node-header">🎬 {{ data.label }}</div>
+              <div class="node-header">{{ data.label }}</div>
               <div class="node-body">{{ data.type }}</div>
             </div>
           </template>
           
           <template #node-condition="{ data }">
             <div class="custom-node condition-node">
-              <div class="node-header">❓ {{ data.label }}</div>
+              <div class="node-header">{{ data.label }}</div>
               <div class="node-body">{{ data.type }}</div>
             </div>
           </template>
@@ -239,21 +239,21 @@ watch([nodes, edges], () => {
 
 // Component definitions
 const triggerComponents = [
-  { type: 'mission_start', label: '任务开始', icon: '🚀' },
-  { type: 'battery_low', label: '电量告警', icon: '🔋' },
-  { type: 'timer', label: '定时器', icon: '⏰' }
+  { type: 'mission_start', label: '任务开始', icon: 'start' },
+  { type: 'battery_low', label: '电量告警', icon: 'battery' },
+  { type: 'timer', label: '定时器', icon: 'timer' },
 ]
 
 const actionComponents = [
-  { type: 'search_area', label: '搜索区域', icon: '🔍' },
-  { type: 'take_photo', label: '拍照', icon: '📷' },
-  { type: 'hover', label: '悬停', icon: '⏸️' },
-  { type: 'return_home', label: '返航', icon: '🏠' }
+  { type: 'search_area', label: '搜索区域', icon: 'search' },
+  { type: 'take_photo', label: '拍照', icon: 'camera' },
+  { type: 'hover', label: '悬停', icon: 'pause' },
+  { type: 'return_home', label: '返航', icon: 'home' },
 ]
 
 const conditionComponents = [
-  { type: 'battery_check', label: '电量检查', icon: '🔋' },
-  { type: 'target_detected', label: '目标检测', icon: '🎯' }
+  { type: 'battery_check', label: '电量检查', icon: 'battery' },
+  { type: 'target_detected', label: '目标检测', icon: 'target' },
 ]
 
 const onDragStart = (event: DragEvent, component: any) => {

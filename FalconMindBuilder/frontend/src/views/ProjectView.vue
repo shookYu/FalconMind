@@ -5,7 +5,7 @@
         <el-button @click="goBack" icon="ArrowLeft">返回</el-button>
         <div class="project-info">
           <h2>{{ project?.name }}</h2>
-          <span class="uav-id" v-if="project?.uav_id">🚁 {{ project.uav_id }}</span>
+          <span class="uav-id" v-if="project?.uav_id"><el-icon><Aim /></el-icon> {{ project.uav_id }}</span>
         </div>
       </div>
       <div class="header-right">
@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { Aim } from '@element-plus/icons-vue'
 import { projectsApi, type Project } from '@/api/projects'
 import { flowsApi, type Flow } from '@/api/flows'
 

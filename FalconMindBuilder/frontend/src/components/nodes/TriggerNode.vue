@@ -1,7 +1,9 @@
 <template>
   <div class="trigger-node" :class="{ selected: data.selected }">
     <div class="node-header">
-      <div class="node-icon">⚡</div>
+      <div class="node-icon">
+        <el-icon><Lightning /></el-icon>
+      </div>
       <div class="node-title">{{ data.label || '触发器' }}</div>
       <div class="node-actions" v-if="data.selected">
         <el-button type="danger" size="small" circle @click="onDelete">
@@ -29,7 +31,7 @@
 
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Delete } from '@element-plus/icons-vue'
+import { Delete, Lightning } from '@element-plus/icons-vue'
 
 interface NodeData {
   type: string
@@ -71,15 +73,15 @@ const onDelete = () => {
 <style scoped>
 .trigger-node {
   min-width: 180px;
-  background: white;
-  border: 2px solid #67c23a;
+  background: var(--color-bg-primary);
+  border: 2px solid var(--color-success);
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .trigger-node.selected {
-  box-shadow: 0 0 0 3px rgba(103, 194, 58, 0.3);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
 }
 
 .node-header {
@@ -87,8 +89,8 @@ const onDelete = () => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: #f0f9eb;
-  border-bottom: 1px solid #e1f3d8;
+  background: var(--color-success-bg);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
 }
 
 .node-icon {
@@ -98,7 +100,7 @@ const onDelete = () => {
 .node-title {
   flex: 1;
   font-weight: 600;
-  color: #67c23a;
+  color: var(--color-success-dark);
   font-size: 14px;
 }
 
@@ -113,7 +115,7 @@ const onDelete = () => {
 
 .trigger-type {
   font-size: 13px;
-  color: #606266;
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 
