@@ -139,6 +139,8 @@ add_library(falconmind_sdk
     src/core/Bus.cpp
     src/core/NodeFactory.cpp
     src/core/FlowExecutor.cpp
+    src/flow/flow_node.cpp
+    src/flow/flow_executor_v2.cpp
     src/c_api/falconmind_sdk_c_api.cpp
     src/flight/FlightConnectionService.cpp
     src/flight/FlightNodes.cpp
@@ -323,6 +325,14 @@ if(FALCONMINDSDK_BUILD_TESTS)
         tests/test_flow_executor.cpp
     )
     target_link_libraries(falconmind_flow_executor_tests PRIVATE falconmind_sdk)
+    target_link_libraries(falconmind_flow_executor_tests PRIVATE falconmind_sdk)
+    
+    # Flow Node Base Tests (百日攻坚新增)
+    add_executable(falconmind_flow_node_base_tests
+        tests/flow/test_flow_node_base.cpp
+    )
+    target_link_libraries(falconmind_flow_node_base_tests PRIVATE falconmind_sdk)
+    add_test(NAME FlowNodeBaseTests COMMAND falconmind_flow_node_base_tests)
     
     add_executable(falconmind_node_factory_tests
         tests/test_node_factory.cpp
@@ -376,6 +386,67 @@ if(FALCONMINDSDK_BUILD_TESTS)
 endif()
 
 # ============================================================================
+# Python bindings
+# ============================================================================
+if(FALCONMINDSDK_BUILD_PYTHON AND NOT FALCONMINDSDK_CROSS_COMPILE_ARM64)
+    if(FALCONMINDSDK_OFFLINE_BUILD)
+        find_package(pybind11 QUIET PATHS ${DEPEND_INSTALL_ROOT} NO_DEFAULT_PATH)
+        if(NOT pybind11_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/3rd/pybind11/include")
+            add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rd/pybind11)
+            set(pybind11_FOUND TRUE)
+            message(STATUS "pybind11: Using bundled")
+        endif()
+    else()
+        find_package(pybind11 QUIET)
+        if(NOT pybind11_FOUND)
+            include(FetchContent)
+            FetchContent_Declare(
+                pybind11
+                GIT_REPOSITORY https://github.com/pybind/pybind11.git
+                GIT_TAG v2.11.1
+                GIT_SHALLOW TRUE
+            )
+            FetchContent_MakeAvailable(pybind11)
+            message(STATUS "pybind11: Using FetchContent")
+        else()
+            message(STATUS "pybind11: Using system installation")
+        endif()
+    endif()
+    
+    if(pybind11_FOUND)
+        find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+        
+        # Main SDK Python module
+        pybind11_add_module(falconmind_sdk_py
+            python/falconmind_sdk.cpp
+        )
+        
+        target_link_libraries(falconmind_sdk_py PRIVATE falconmind_sdk)
+        
+        set_target_properties(falconmind_sdk_py PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
+            OUTPUT_NAME falconmind_sdk
+        )
+        
+        # Denied environment nodes Python module
+        pybind11_add_module(denied_env_nodes_py
+            python/denied_env_nodes.cpp
+        )
+        
+        target_link_libraries(denied_env_nodes_py PRIVATE falconmind_sdk)
+        
+        set_target_properties(denied_env_nodes_py PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
+            OUTPUT_NAME denied_env_nodes
+        )
+        
+        message(STATUS "Python bindings will be installed to: ${CMAKE_CURRENT_SOURCE_DIR}/python")
+        message(STATUS "  - falconmind_sdk (Core SDK API)")
+        message(STATUS "  - denied_env_nodes (Denied Environment Nodes)")
+    endif()
+elseif(FALCONMINDSDK_CROSS_COMPILE_ARM64)
+    message(STATUS "Python bindings: Skipped (ARM64 cross-compilation)")
+endif()
 # Python bindings
 # ============================================================================
 if(FALCONMINDSDK_BUILD_PYTHON AND NOT FALCONMINDSDK_CROSS_COMPILE_ARM64)
