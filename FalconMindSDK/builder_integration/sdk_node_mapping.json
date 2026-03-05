@@ -1,0 +1,193 @@
+{
+  "_description": "FalconMindSDK Builder节点映射配置 - 拒止环境任务专用节点",
+  "_version": "1.0.0",
+  "_author": "FalconMind SDK Team",
+  
+  "sdk_node_mapping": {
+    "description": "将Builder Flow节点直接映射到SDK C++类，无需自定义Python实现",
+    
+    "nodes": [
+      {
+        "node_type": "GPSDefenderActivator",
+        "sdk_class": "falconmind::sdk::navigation::GPSDefender",
+        "sdk_header": "falconmind/sdk/navigation/GPSDefender.h",
+        "category": "safety",
+        "is_background": true,
+        "inputs": {},
+        "outputs": {
+          "defense_active": {"type": "boolean", "sdk_method": "isGNSSReliable"},
+          "alert_level": {"type": "enum", "sdk_method": "getAlertLevel"}
+        },
+        "parameters": {
+          "raim_threshold": {"type": "double", "default": 5.0, "sdk_config": "GPSDefenderConfig.raim_threshold"},
+          "velocity_diff_threshold": {"type": "double", "default": 3.0, "sdk_config": "GPSDefenderConfig.velocity_diff_threshold"},
+          "position_diff_threshold": {"type": "double", "default": 10.0, "sdk_config": "GPSDefenderConfig.position_diff_threshold"}
+        },
+        "lifecycle": {
+          "on_flow_start": "initialize()",
+          "on_flow_stop": "reset()",
+          "background_loop": "processGNSS()",
+          "loop_frequency_hz": 1
+        },
+        "flow_usage_example": {
+          "id": "start_gps_defense",
+          "type": "action",
+          "subtype": "sdk_node",
+          "data": {
+            "sdk_node_type": "GPSDefenderActivator",
+            "parameters": {
+              "raim_threshold": 5.0,
+              "velocity_diff_threshold": 3.0
+            }
+          }
+        }
+      },
+      
+      {
+        "node_type": "VisualServoController",
+        "sdk_class": "falconmind::sdk::control::IBVSController",
+        "sdk_header": "falconmind/sdk/control/IBVSController.h",
+        "category": "control",
+        "is_background": true,
+        "inputs": {
+          "target_u": {"type": "double", "description": "目标归一化u坐标"},
+          "target_v": {"type": "double", "description": "目标归一化v坐标"},
+          "current_distance": {"type": "double", "description": "当前距离"},
+          "current_height": {"type": "double", "description": "当前高度"}
+        },
+        "outputs": {
+          "vx": {"type": "double", "description": "前向速度"},
+          "vy": {"type": "double", "description": "右向速度"},
+          "vz": {"type": "double", "description": "下向速度"},
+          "yaw_rate": {"type": "double", "description": "偏航角速度"}
+        },
+        "parameters": {
+          "desired_distance": {"type": "double", "default": 30.0, "sdk_config": "IBVSConfig.desired_distance"},
+          "desired_height": {"type": "double", "default": 10.0, "sdk_config": "IBVSConfig.desired_height"},
+          "max_speed": {"type": "double", "default": 8.0, "sdk_config": "IBVSConfig.max_speed"},
+          "kp_distance": {"type": "double", "default": 0.5, "sdk_config": "IBVSConfig.kp_distance"},
+          "ki_distance": {"type": "double", "default": 0.1, "sdk_config": "IBVSConfig.ki_distance"},
+          "kd_distance": {"type": "double", "default": 0.2, "sdk_config": "IBVSConfig.kd_distance"}
+        },
+        "lifecycle": {
+          "on_flow_start": "initialize()",
+          "on_flow_stop": "reset()",
+          "background_loop": "computeControl()",
+          "loop_frequency_hz": 20
+        },
+        "flow_usage_example": {
+          "id": "start_visual_servo",
+          "type": "action",
+          "subtype": "sdk_node",
+          "data": {
+            "sdk_node_type": "VisualServoController",
+            "parameters": {
+              "desired_distance": 30.0,
+              "desired_height": 10.0,
+              "max_speed": 8.0
+            }
+          }
+        }
+      },
+      
+      {
+        "node_type": "MonocularDistanceEstimator",
+        "sdk_class": "falconmind::sdk::perception::MonocularDistanceEstimator",
+        "sdk_header": "falconmind/sdk/perception/MonocularDistanceEstimator.h",
+        "category": "perception",
+        "is_background": false,
+        "inputs": {
+          "bbox": {"type": "object", "description": "边界框"},
+          "class_name": {"type": "string", "description": "目标类别"}
+        },
+        "outputs": {
+          "distance": {"type": "double", "description": "估计距离"},
+          "confidence": {"type": "double", "description": "置信度"}
+        },
+        "parameters": {
+          "fx": {"type": "double", "default": 1000.0, "sdk_config": "MonocularCameraIntrinsics.fx"},
+          "fy": {"type": "double", "default": 1000.0, "sdk_config": "MonocularCameraIntrinsics.fy"},
+          "cx": {"type": "double", "default": 960.0, "sdk_config": "MonocularCameraIntrinsics.cx"},
+          "cy": {"type": "double", "default": 540.0, "sdk_config": "MonocularCameraIntrinsics.cy"}
+        },
+        "lifecycle": {
+          "on_flow_start": "initialize()",
+          "on_node_execute": "estimate()"
+        },
+        "flow_usage_example": {
+          "id": "estimate_distance",
+          "type": "action",
+          "subtype": "sdk_node",
+          "data": {
+            "sdk_node_type": "MonocularDistanceEstimator",
+            "inputs": {
+              "bbox": "${detection.bbox}",
+              "class_name": "${detection.class_name}"
+            }
+          }
+        }
+      },
+      
+      {
+        "node_type": "DeniedEnvMission",
+        "sdk_class": "falconmind::sdk::high_level::DeniedEnvMission",
+        "sdk_header": "falconmind/sdk/high_level/DeniedEnvMission.h",
+        "category": "high_level",
+        "is_background": true,
+        "description": "拒止环境任务一站式封装",
+        "methods": {
+          "initializeVINS": {"description": "初始化VINS"},
+          "startSearch": {"description": "开始区域搜索"},
+          "startTracking": {"description": "开始目标跟踪"},
+          "returnToLaunch": {"description": "返航"},
+          "getTrackingQuality": {"description": "获取跟踪质量"}
+        },
+        "lifecycle": {
+          "on_flow_start": "initialize()",
+          "on_flow_stop": "abortAndReturn()"
+        },
+        "flow_usage_example": {
+          "id": "mission_controller",
+          "type": "action",
+          "subtype": "sdk_node",
+          "data": {
+            "sdk_node_type": "DeniedEnvMission",
+            "parameters": {
+              "tracking_params": {
+                "desired_distance": 30.0,
+                "desired_height": 10.0
+              }
+            }
+          }
+        }
+      }
+    ],
+    
+    "conversion_rules": {
+      "python_to_sdk": {
+        "description": "Builder Python参数自动转换为SDK C++配置",
+        "example": {
+          "python_param": "desired_distance",
+          "sdk_config_path": "IBVSConfig.desired_distance",
+          "conversion": "direct"
+        }
+      },
+      "sdk_to_python": {
+        "description": "SDK C++返回值自动转换为Python字典",
+        "example": {
+          "sdk_return_type": "VelocityCommand",
+          "python_dict": {"vx": "return.vx", "vy": "return.vy", "vz": "return.vz", "yaw_rate": "return.yaw_rate"}
+        }
+      }
+    },
+    
+    "auto_binding": {
+      "description": "自动绑定SDK节点到Builder FlowExecutor",
+      "mechanism": "通过pybind11自动生成Python绑定",
+      "generated_files": [
+        "sdk_nodes_binding.cpp",
+        "sdk_nodes.pyi"
+      ]
+    }
+  }
+}
