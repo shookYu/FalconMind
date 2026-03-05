@@ -1,439 +1,526 @@
-# Builder Approach - 拒止环境视觉跟踪 (边缘编排方式)
+# Builder方式 - 拒止环境视觉跟踪
 
 ## 概述
 
-采用FalconMindBuilder可视化编排实现拒止环境视觉跟踪任务。通过拖拽节点完成业务逻辑编排，部署在UAV边缘设备上实时执行。
+使用FalconMindBuilder**可视化编排Flow**，部署在UAV边缘**解释执行**。
 
-## 架构特点
+**关键原则：**
+- ✅ Builder只生成Flow JSON配置
+- ✅ Flow配置由SDK FlowExecutor解释执行
+- ✅ 支持完全离线运行（不依赖地面站）
+
+---
+
+## 架构
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          Builder Approach 架构                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    FalconMindBuilder (边缘设备)                     │   │
-│  │                                                                    │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │   │
-│  │  │ Flow Executor│  │ 自定义节点   │  │ Web UI       │             │   │
-│  │  │ 流程解释执行  │  │ 业务逻辑     │  │ 编排界面     │             │   │
-│  │  │              │  │              │  │              │             │   │
-│  │  │ • 节点调度   │  │ • VINS检查   │  │ • 拖拽编排   │             │   │
-│  │  │ • 状态管理   │  │ • GPS防护    │  │ • 参数配置   │             │   │
-│  │  │ • 异常处理   │  │ • 视觉伺服   │  │ • 部署按钮   │             │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘             │   │
-│  │                                                                    │   │
-│  └──────────────────────────────────┬─────────────────────────────────┘   │
-│                                      │                                       │
-│                         本地API调用 (ZeroMQ/gRPC)                          │
-│                                      │                                       │
-│  ┌──────────────────────────────────┼─────────────────────────────────┐   │
-│  │                    FalconMindSDK   │                                │   │
-│  │                                   │                                 │   │
-│  │  ┌──────────────┐  ┌──────────────┼┐  ┌──────────────┐             │   │
-│  │  │ VINS-Fusion  │  │ YOLO+DeepSORT││  │ MAVLink      │             │   │
-│  │  │ 视觉惯性导航  │  │ 目标检测跟踪 ││  │ 飞控通信     │             │   │
-│  │  │ GPS欺骗检测   │  │ IBVS控制     ││  │ 指令下发     │             │   │
-│  │  └──────────────┘  └──────────────┘│  └──────────────┘             │   │
-│  │                                    │                                 │   │
-│  └────────────────────────────────────┴─────────────────────────────────┘   │
-│                                                                              │
-│  可选: 弱网连接地面站 (只用于监控，不用于控制)                                  │
-│  WebSocket: 遥测上报 + 目标选择指令                                          │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Builder方式数据流                            │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  操作员 ──▶ Builder UI ──▶ Flow JSON配置 ──▶ SDK FlowExecutor       │
+│       (拖拽节点)           (流程定义)         (UAV边缘解释执行)      │
+│                                                                     │
+│                                            │                        │
+│                                            ▼                        │
+│                                     ┌──────────────┐                │
+│                                     │  飞控 (PX4)  │                │
+│                                     └──────────────┘                │
+│                                                                     │
+│  可选: 弱网连接Viewer（仅监控）                                       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## 核心组件
+---
 
-### 1. Flow定义 (`flow_definitions/`)
+## 配置说明
 
-业务流程分为三个阶段：
+### 1. Flow配置文件
 
-#### Phase 1: 区域侦查 (`phase1_search.json`)
+**文件路径:** `configs/builder/*.json`
+
+#### phase1_search.json - 区域侦查阶段
 
 ```json
 {
-  "nodes": [
-    "start" → "check_vins_status" → "takeoff" → 
-    "start_gps_defense" → "search_pattern_generator" → 
-    "execute_search" → "check_target_detected" → 
-    "hover_and_notify" → "target_acquired"
-  ]
-}
-```
-
-**关键节点：**
-- `check_vins_status`: 检查VINS初始化状态
-- `start_gps_defense`: 启动GPS欺骗防护
-- `execute_search`: 执行区域搜索
-- `check_target_detected`: 检测目标发现
-
-#### Phase 2: 目标锁定 (`phase2_target_lock.json`)
-
-```json
-{
-  "nodes": [
-    "entry" → "maintain_hover" + "stream_to_gcs" → 
-    "wait_for_selection" → "initiate_target_lock" → 
-    "confirm_lock" → "transition_to_tracking"
-  ]
-}
-```
-
-**关键节点：**
-- `maintain_hover`: 保持悬停
-- `wait_for_selection`: 等待地面人员选择目标
-- `initiate_target_lock`: 初始化目标锁定
-
-#### Phase 3: 视觉跟踪 (`phase3_tracking.json`)
-
-```json
-{
-  "nodes": [
-    "entry" → "tracking_config" → "start_visual_servo" → 
-    "tracking_loop" → "compute_servo_control" → 
-    "send_velocity_command" → "check_end_conditions"
-  ]
-}
-```
-
-**关键节点：**
-- `start_visual_servo`: 启动视觉伺服控制器（背景任务）
-- `compute_servo_control`: 计算IBVS控制
-- `check_end_conditions`: 检查任务结束条件
-
-### 2. 自定义节点 (`custom_nodes/`)
-
-#### VisualServoController (`visual_servoing.py`)
-
-**功能：**
-- 20Hz实时控制循环
-- IBVS控制律计算
-- PID距离控制
-- 自适应增益调整
-
-**算法：**
-```python
-# 图像误差
-ex = (target_u - image_center_u) / image_width
-ey = (target_v - image_center_v) / image_height
-ez = current_distance - desired_distance
-
-# IBVS控制律
-vx = -Kp * ez - Ki * integral_error - Kd * derivative_error
-vy = -Kp_xy * ex * current_distance
-vz = -Kp_xy * ey * current_distance
-yaw_rate = -Kp_yaw * ex
-```
-
-**节点定义：**
-```json
-{
-  "type": "custom",
-  "custom_node_type": "VisualServoController",
-  "is_background": true,
-  "inputs": {
-    "target_track_id": "目标跟踪ID",
-    "config": "IBVS配置参数"
+  "_description": "拒止环境区域侦查 - 阶段1",
+  "_version": "1.0",
+  "flow_id": "denied_env_search_phase",
+  "flow_name": "拒止环境区域侦查",
+  
+  "metadata": {
+    "description": "在GPS拒止环境下执行区域侦查",
+    "requirements": ["VINS", "Camera", "NPU"],
+    "estimated_duration": "10-30分钟"
   },
-  "outputs": {
-    "controller_active": "控制器状态",
-    "control_rate_hz": "控制频率"
+
+  "nodes": [
+    {
+      "id": "start",
+      "type": "trigger",
+      "subtype": "manual",
+      "data": {
+        "label": "开始任务",
+        "confirmation_required": true
+      }
+    },
+    {
+      "id": "check_vins",
+      "type": "condition",
+      "subtype": "custom",
+      "data": {
+        "label": "VINS就绪?",
+        "custom_node_type": "VINSStatusCheck",
+        "parameters": {
+          "min_confidence": 0.8,
+          "timeout_seconds": 5
+        }
+      }
+    },
+    {
+      "id": "takeoff",
+      "type": "action",
+      "subtype": "flight_control",
+      "data": {
+        "label": "起飞",
+        "command": "TAKEOFF",
+        "parameters": {
+          "altitude": 50,
+          "speed": 3
+        }
+      }
+    },
+    {
+      "id": "start_gps_defense",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "启动GPS防护",
+        "custom_node_type": "GPSDefenseActivator",
+        "parameters": {
+          "raim_check": true,
+          "imu_consistency_check": true,
+          "alert_threshold": "SUSPECTED"
+        }
+      }
+    },
+    {
+      "id": "generate_waypoints",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "生成搜索航点",
+        "custom_node_type": "SearchPatternGenerator",
+        "parameters": {
+          "pattern": "LAWN_MOWER",
+          "area": "${mission_config.search_area}",
+          "altitude": "${mission_config.search_altitude}",
+          "speed": "${mission_config.search_speed}",
+          "overlap_rate": 0.2
+        }
+      }
+    },
+    {
+      "id": "start_detection",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "启动视觉检测",
+        "custom_node_type": "VisualDetector",
+        "parameters": {
+          "model": "yolov8n",
+          "classes": ["person", "vehicle"],
+          "confidence_threshold": 0.6,
+          "enable_tracking": true,
+          "use_npu": true
+        }
+      }
+    },
+    {
+      "id": "execute_search",
+      "type": "action",
+      "subtype": "flight_control",
+      "data": {
+        "label": "执行区域侦查",
+        "command": "FOLLOW_WAYPOINTS",
+        "parameters": {
+          "waypoints": "${generate_waypoints.waypoints}",
+          "speed": 5
+        },
+        "parallel_actions": ["start_detection"]
+      }
+    },
+    {
+      "id": "check_target",
+      "type": "condition",
+      "subtype": "custom",
+      "data": {
+        "label": "发现目标?",
+        "custom_node_type": "TargetDetectionChecker",
+        "inputs": {
+          "detections": "${start_detection.detections}"
+        },
+        "parameters": {
+          "target_classes": ["person"],
+          "min_confidence": 0.7
+        }
+      }
+    },
+    {
+      "id": "hover",
+      "type": "action",
+      "subtype": "flight_control",
+      "data": {
+        "label": "悬停等待",
+        "command": "HOVER"
+      }
+    }
+  ],
+
+  "edges": [
+    { "source": "start", "target": "check_vins" },
+    { "source": "check_vins", "target": "takeoff", "type": "true" },
+    { "source": "takeoff", "target": "start_gps_defense" },
+    { "source": "start_gps_defense", "target": "generate_waypoints" },
+    { "source": "generate_waypoints", "target": "execute_search" },
+    { "source": "execute_search", "target": "check_target" },
+    { "source": "check_target", "target": "hover", "type": "true", "label": "发现" },
+    { "source": "check_target", "target": "execute_search", "type": "false", "label": "继续" }
+  ],
+
+  "config": {
+    "execution_mode": "reactive",
+    "error_handling": {
+      "on_node_error": "pause_and_notify",
+      "max_retries": 3
+    }
   }
 }
 ```
 
-#### GPSDefenseActivator (`gps_defense.py`)
+#### phase2_target_lock.json - 目标锁定阶段
 
-**功能：**
-- 1Hz GNSS监控
-- RAIM一致性检查
-- IMU速度一致性验证
-- 自动切换导航源
-
-**检测算法：**
-```python
-def check_spoofing(gnss_data):
-    # 1. RAIM检查
-    raim_ok = check_raim_residuals(gnss_data)
-    
-    # 2. IMU一致性
-    imu_velocity = integrate_imu()
-    velocity_diff = ||gnss_velocity - imu_velocity||
-    imu_ok = velocity_diff < 3.0
-    
-    # 3. 综合判断
-    if not raim_ok or not imu_ok:
-        return SPOOFING_DETECTED
-```
-
-### 3. Web界面扩展 (`web_interface/`)
-
-#### TargetSelectionPanel.vue
-
-**功能：**
-- 显示检测到的目标列表
-- 目标边界框叠加显示
-- 人工选择/确认按钮
-- 目标信息展示（距离、置信度）
-
-```vue
-<template>
-  <div class="target-selection-panel">
-    <h3>发现目标</h3>
-    <div v-for="target in detectedTargets" :key="target.track_id"
-         class="target-card"
-         @click="selectTarget(target)"
-         :class="{ selected: isSelected(target) }">
-      <img :src="target.thumbnail" />
-      <div class="target-info">
-        <span>ID: {{ target.track_id }}</span>
-        <span>距离: {{ target.distance }}m</span>
-        <span>置信度: {{ target.confidence }}%</span>
-      </div>
-    </div>
-    
-    <button @click="confirmSelection" :disabled="!selectedTarget">
-      确认选择
-    </button>
-  </div>
-</template>
-```
-
-## 工作流程
-
-### 1. 编排Flow
-
-```bash
-# 1. 打开Builder界面
-http://uav-ip:8080
-
-# 2. 从模板库选择"拒止环境区域侦查"
-# 或使用自定义Flow: phase1_search.json
-
-# 3. 配置参数
-# - 搜索区域: 在地图上绘制
-# - 搜索高度: 50m
-# - 跟踪距离: 30m
-# - 跟踪高度: 10m
-
-# 4. 点击"部署"按钮
-```
-
-### 2. 执行流程
-
-```
-[人工启动] 
-    ↓
-[检查VINS状态] --否→ [报错终止]
-    ↓ 是
-[起飞到50m]
-    ↓
-[启动GPS防护] (后台持续运行)
-    ↓
-[生成搜索航点]
-    ↓
-[执行区域侦查] ←→ [YOLO检测] (并行)
-    ↓ 发现目标
-[悬停等待]
-    ↓
-[视频回传地面站]
-    ↓
-[等待目标选择] ← [地面人员操作]
-    ↓ 已确认
-[启动视觉伺服] (20Hz控制)
-    ↓
-[实时跟踪目标]
-    ↓
-[任务结束] → [返航]
-```
-
-### 3. 人机交互
-
-**地面人员界面：**
-```
-┌─────────────────────────────────────┐
-│  拒止环境任务 - 目标选择            │
-├─────────────────────────────────────┤
-│ ┌─────────┐ ┌─────────┐            │
-│ │ 目标 #1 │ │ 目标 #2 │            │
-│ │ [图像]  │ │ [图像]  │            │
-│ │ 距离:45m│ │ 距离:32m│            │
-│ │ 置信:92%│ │ 置信:88%│            │
-│ └─────────┘ └─────────┘            │
-│                                     │
-│ [选中目标 #2]                       │
-│                                     │
-│ [确认选择] [重新搜索]               │
-└─────────────────────────────────────┘
-```
-
-## 关键设计决策
-
-### 1. 为什么使用背景任务？
-
-视觉伺服需要20Hz持续控制，而Flow执行是事件驱动的。
-
-**解决方案：**
-- `start_visual_servo` 作为背景任务启动
-- 主Flow通过共享状态获取跟踪信息
-- 使用 `check_target_visible` 节点同步状态
-
-### 2. 如何处理弱网？
-
-Builder完全运行在边缘，通信中断不影响任务执行。
-
-**降级策略：**
 ```json
 {
-  "degraded_modes": {
-    "on_comm_loss": "continue_autonomous",
-    "on_gcs_disconnect": "store_telemetry_locally",
-    "on_video_timeout": "reduce_quality"
+  "_description": "目标锁定与确认 - 阶段2",
+  "flow_id": "denied_env_target_lock",
+  
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "subtype": "subflow",
+      "data": {
+        "label": "目标获取",
+        "inputs": ["target_info", "detection_image"]
+      }
+    },
+    {
+      "id": "maintain_hover",
+      "type": "action",
+      "subtype": "flight_control",
+      "data": {
+        "label": "保持悬停",
+        "command": "HOVER"
+      }
+    },
+    {
+      "id": "stream_to_gcs",
+      "type": "action",
+      "subtype": "communication",
+      "data": {
+        "label": "视频回传",
+        "command": "START_VIDEO_STREAM",
+        "parameters": {
+          "quality": "720p",
+          "codec": "H.265"
+        }
+      }
+    },
+    {
+      "id": "wait_selection",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "等待目标选择",
+        "custom_node_type": "TargetAwaiter",
+        "parameters": {
+          "timeout_seconds": 300,
+          "target_classes": ["person"]
+        }
+      }
+    },
+    {
+      "id": "check_confirmed",
+      "type": "condition",
+      "subtype": "custom",
+      "data": {
+        "label": "目标已确认?",
+        "custom_node_type": "TargetConfirmationChecker"
+      }
+    }
+  ],
+
+  "edges": [
+    { "source": "entry", "target": "maintain_hover" },
+    { "source": "entry", "target": "stream_to_gcs", "type": "parallel" },
+    { "source": "maintain_hover", "target": "wait_selection" },
+    { "source": "wait_selection", "target": "check_confirmed" },
+    { "source": "check_confirmed", "target": "SUBFLOW:phase3_tracking", "type": "true" },
+    { "source": "check_confirmed", "target": "maintain_hover", "type": "false" }
+  ]
+}
+```
+
+#### phase3_tracking.json - 视觉跟踪阶段
+
+```json
+{
+  "_description": "视觉制导跟踪 - 阶段3",
+  "flow_id": "denied_env_tracking_phase",
+  
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "subtype": "subflow",
+      "data": {
+        "label": "开始跟踪"
+      }
+    },
+    {
+      "id": "configure_tracking",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "配置跟踪参数",
+        "custom_node_type": "TrackingConfigurator",
+        "parameters": {
+          "desired_distance": "${mission_config.tracking.desired_distance}",
+          "desired_height": "${mission_config.tracking.desired_height}",
+          "max_speed": "${mission_config.tracking.max_speed}",
+          "pid_params": "${mission_config.tracking.ibvs_params}"
+        }
+      }
+    },
+    {
+      "id": "start_visual_servo",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "启动视觉伺服",
+        "custom_node_type": "VisualServoController",
+        "is_background": true,
+        "parameters": {
+          "control_frequency": 20,
+          "target_track_id": "${wait_selection.selected_track_id}"
+        },
+        "outputs": {
+          "controller_active": "boolean",
+          "control_rate_hz": "float"
+        }
+      }
+    },
+    {
+      "id": "tracking_monitor",
+      "type": "action",
+      "subtype": "custom",
+      "data": {
+        "label": "跟踪监控",
+        "custom_node_type": "TrackingMonitor",
+        "parameters": {
+          "check_interval": 0.5,
+          "timeout_seconds": "${mission_config.tracking.tracking_timeout}"
+        }
+      }
+    },
+    {
+      "id": "check_end_conditions",
+      "type": "condition",
+      "subtype": "custom",
+      "data": {
+        "label": "结束条件?",
+        "custom_node_type": "EndConditionChecker",
+        "parameters": {
+          "conditions": ["target_lost", "manual_abort", "battery_low"]
+        }
+      }
+    },
+    {
+      "id": "return_home",
+      "type": "action",
+      "subtype": "flight_control",
+      "data": {
+        "label": "返航",
+        "command": "RETURN_TO_LAUNCH"
+      }
+    }
+  ],
+
+  "edges": [
+    { "source": "entry", "target": "configure_tracking" },
+    { "source": "configure_tracking", "target": "start_visual_servo" },
+    { "source": "start_visual_servo", "target": "tracking_monitor" },
+    { "source": "tracking_monitor", "target": "check_end_conditions" },
+    { "source": "check_end_conditions", "target": "tracking_monitor", "type": "continue" },
+    { "source": "check_end_conditions", "target": "return_home", "type": "end" }
+  ]
+}
+```
+
+---
+
+## 节点类型依赖
+
+### SDK需提供以下自定义节点类型:
+
+| 节点类型 | 功能 | 参数示例 | 优先级 |
+|---------|------|---------|--------|
+| `VINSStatusCheck` | 检查VINS状态 | `min_confidence`, `timeout` | P0 |
+| `GPSDefenseActivator` | GPS欺骗检测 | `raim_check`, `imu_check` | P0 |
+| `SearchPatternGenerator` | 生成搜索航点 | `pattern`, `area`, `overlap` | P0 |
+| `VisualDetector` | 视觉检测 | `model`, `classes`, `confidence` | P0 |
+| `TargetDetectionChecker` | 检查目标发现 | `target_classes`, `min_confidence` | P0 |
+| `TargetAwaiter` | 等待目标选择 | `timeout`, `target_classes` | P0 |
+| `VisualServoController` | IBVS控制 | `control_frequency`, `pid_params` | P0 |
+| `TrackingConfigurator` | 跟踪配置 | `desired_distance`, `max_speed` | P1 |
+| `TrackingMonitor` | 跟踪监控 | `check_interval`, `timeout` | P1 |
+| `EndConditionChecker` | 结束条件检查 | `conditions` | P1 |
+
+---
+
+## 执行流程
+
+### 配置编排
+
+```
+操作员在Builder UI上:
+  1. 从模板选择"拒止环境任务"
+  2. 拖拽三个Flow节点（或直接使用本配置）
+  3. 配置节点参数:
+     - 搜索区域（地图绘制）
+     - 搜索高度：50m
+     - 跟踪距离：30m
+     - IBVS参数（或保持默认）
+  4. 点击"部署"
+```
+
+### 运行流程
+
+```
+FlowExecutor加载 phase1_search.json
+    │
+    ├──▶ [人工启动]
+    │
+    ├──▶ [检查VINS状态] ──否──▶ [错误终止]
+    │         │
+    │         是
+    │         ▼
+    ├──▶ [起飞到50m]
+    │
+    ├──▶ [启动GPS防护] (后台持续运行)
+    │
+    ├──▶ [生成搜索航点]
+    │
+    ├──▶ [执行区域侦查] ←──────┐
+    │         │                │
+    │         ▼                │
+    │    [YOLO并行检测]         │
+    │         │                │
+    │         发现目标          │
+    │         ▼                │
+    ├──▶ [悬停]                │
+    │         │                │
+    │         ▼                │
+    ├──▶ [进入phase2_target_lock]  
+    │         │
+    │         ▼
+    ├──▶ [视频回传] ──▶ [操作员选择目标]
+    │         │
+    │         ▼
+    ├──▶ [等待确认] ←──┐
+    │         │        │
+    │         已确认    │
+    │         ▼        │
+    ├──▶ [进入phase3_tracking]
+    │         │
+    │         ▼
+    ├──▶ [启动VisualServo] (20Hz后台)
+    │         │
+    │         ▼
+    ├──▶ [实时跟踪] ←──────────┐
+    │         │               │
+    │         满足结束条件     │
+    │         ▼               │
+    └──▶ [返航]
+```
+
+---
+
+## 弱网支持
+
+### Builder方式天生支持弱网:
+
+```json
+{
+  "config": {
+    "degraded_modes": {
+      "on_comm_loss": "continue_autonomous",
+      "on_gcs_disconnect": "store_telemetry_locally",
+      "on_video_timeout": "reduce_quality"
+    }
   }
 }
 ```
 
-### 3. 实时性如何保证？
+- ✅ Flow完全在UAV本地执行
+- ✅ 通信中断不影响任务执行
+- ✅ 可选的遥测上报（Viewer仅监控）
+
+---
+
+## 工程依赖
+
+### FalconMindBuilder 需提供:
+- ✅ Flow编辑器（拖拽编排）
+- ✅ 本场景预置Flow模板
+- ✅ 节点参数配置UI
+- ✅ Flow部署功能
+
+### FalconMindSDK 需提供:
+- ✅ FlowExecutor（解释执行Flow JSON）
+- ✅ 上述所有自定义节点类型
+- ✅ 节点参数验证
+
+---
+
+## 当前状态
 
 ```
-┌────────────────────────────────────┐
-│         延迟分解 (ms)              │
-├────────────────────────────────────┤
-│ 图像采集            16.7 (60fps)  │
-│ YOLO检测 (NPU)      25            │
-│ DeepSORT跟踪        5             │
-│ IBVS计算            2             │
-│ MAVLink发送         10            │
-│ 飞控响应            20            │
-├────────────────────────────────────┤
-│ 总延迟              ~79ms         │
-│ 控制频率            20Hz          │
-└────────────────────────────────────┘
+🟡 部分可用（缺少专用模板和节点）
+
+当前能力:
+  ✅ Builder基础Flow编排可用
+  ✅ Flow JSON格式标准
+
+缺失能力:
+  ⚠️ 专用Flow模板（可用通用节点手动搭建）
+  ❌ 自定义节点类型（8个P0节点）
+  ⚠️ 节点参数配置UI（可用JSON编辑器）
+
+当SDK实现P0节点后，本配置可直接运行。
 ```
 
-## 文件结构
+---
 
-```
-02_Builder_Approach/
-├── README.md                          # 本文件
-├── flow_definitions/                  # Flow JSON定义
-│   ├── phase1_search.json             # 阶段1: 区域侦查
-│   ├── phase2_target_lock.json        # 阶段2: 目标锁定
-│   └── phase3_tracking.json           # 阶段3: 视觉跟踪
-├── custom_nodes/                      # 自定义节点实现
-│   ├── __init__.py
-│   ├── visual_servoing.py             # 视觉伺服控制器
-│   ├── gps_defense.py                 # GPS防护激活器
-│   ├── vins_initialization.py         # VINS初始化节点
-│   ├── target_awaiter.py              # 目标等待节点
-│   └── ibvs_controller.py             # IBVS计算节点
-└── web_interface/                     # Builder界面扩展
-    ├── components/
-    │   ├── TargetSelectionPanel.vue   # 目标选择面板
-    │   └── TrackingMonitor.vue        # 跟踪监控
-    └── composables/
-        └── useDeniedEnvMission.js     # 业务逻辑组合
-```
+## 验证检查点
 
-## 优缺点分析
-
-### 优点
-
-1. **零代码开发**
-   - 拖拽式编排
-   - 无需编程经验
-   - 快速原型验证
-
-2. **边缘自治**
-   - 完全离线运行
-   - 不依赖通信链路
-   - 低延迟响应
-
-3. **即时部署**
-   - 配置解释执行
-   - 无需编译
-   - 秒级生效
-
-4. **现场调试**
-   - 现场修改参数
-   - 实时查看效果
-   - 快速迭代
-
-### 缺点
-
-1. **功能受限**
-   - 依赖预置节点
-   - 复杂逻辑难表达
-   - 性能优化有限
-
-2. **可维护性**
-   - JSON难以版本控制
-   - 调试困难
-   - 测试覆盖难
-
-3. **灵活性**
-   - 定制需求需开发新节点
-   - 算法参数受限
-   - 深度优化困难
-
-## 适用场景
-
-- ✅ 现场快速部署
-- ✅ 标准任务场景
-- ✅ 网络受限环境
-- ✅ 非技术人员操作
-- ✅ 原型验证阶段
-
-## 演进建议
-
-1. **节点库扩展**
-   - 添加更多控制算法节点
-   - 支持自定义Python脚本节点
-   - 节点参数自适应优化
-
-2. **可视化增强**
-   - 实时跟踪轨迹显示
-   - 距离/高度曲线图
-   - 异常告警可视化
-
-3. **调试工具**
-   - Flow执行回放
-   - 变量监控面板
-   - 性能分析工具
-
-## 与Viewer方式对比
-
-| 维度 | Builder方式 | Viewer方式 |
-|------|-------------|------------|
-| **开发效率** | ⭐⭐⭐ 高 | ⭐⭐ 中 |
-| **运行独立性** | ⭐⭐⭐ 完全独立 | ⭐⭐ 依赖通信 |
-| **功能复杂度** | ⭐⭐ 中等 | ⭐⭐⭐ 高 |
-| **实时性** | ⭐⭐⭐ 最优 | ⭐⭐ 较好 |
-| **可维护性** | ⭐⭐ 一般 | ⭐⭐⭐ 好 |
-| **人机协同** | ⭐⭐ 基础 | ⭐⭐⭐ 丰富 |
-
-## 部署步骤
-
-```bash
-# 1. 进入Builder目录
-cd FalconMindBuilder
-
-# 2. 复制Flow定义
-cp -r ../PoC/Scenario_01_DeniedGPS_VisualTracking/02_Builder_Approach/flow_definitions/* \
-      backend/app/flows/
-
-# 3. 复制自定义节点
-cp ../PoC/Scenario_01_DeniedGPS_VisualTracking/02_Builder_Approach/custom_nodes/*.py \
-   backend/app/custom_nodes/
-
-# 4. 注册节点
-python backend/app/register_nodes.py
-
-# 5. 启动Builder
-docker-compose up -d
-
-# 6. 访问界面
-open http://localhost:8080
-```
+- [ ] Flow JSON能被Builder正确解析和显示
+- [ ] Builder能部署Flow到UAV
+- [ ] SDK FlowExecutor能加载执行Flow
+- [ ] 所有P0节点类型可被识别和执行
+- [ ] 节点参数能被正确传递
+- [ ] 背景任务（VisualServo）能并行运行
+- [ ] 20Hz控制闭环正常工作
+- [ ] 弱网环境下任务不中断

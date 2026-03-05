@@ -1,463 +1,465 @@
-# SDK Native Approach - 拒止环境视觉跟踪 (C++原生方式)
+# SDK Native方式 - 拒止环境视觉跟踪
 
 ## 概述
 
-采用FalconMindSDK C++原生开发实现拒止环境视觉跟踪任务。最高性能、完全定制、深度优化。
+使用FalconMindSDK C++ API**直接开发可执行程序**，通过配置文件**驱动执行**。
 
-## 架构特点
+**关键原则：**
+- ✅ SDK提供可执行程序（mission_launcher）
+- ✅ 通过Mission YAML配置文件驱动
+- ✅ 多进程架构（感知/控制/导航分离）
+- ✅ 主脚本（launcher.sh）拉起所有进程
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          SDK Native Architecture                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    denied_env_tracking (可执行文件)                  │   │
-│  │                                                                    │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │   │
-│  │  │ Mission      │  │ Navigation   │  │ Perception   │             │   │
-│  │  │ Controller   │──┤ (VINS+GPS)   │──┤ (YOLO+Track) │             │   │
-│  │  │              │  │              │  │              │             │   │
-│  │  │ • 状态机     │  │ • VINS初始化  │  │ • YOLO检测   │             │   │
-│  │  │ • 事件调度   │  │ • GPS防护    │  │ • DeepSORT   │             │   │
-│  │  │ • 人机交互   │  │ • EKF融合    │  │ • 距离估计   │             │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘             │   │
-│  │          │                  │                  │                   │   │
-│  │          └──────────────────┼──────────────────┘                   │   │
-│  │                             │                                      │   │
-│  │          ┌──────────────────┼──────────────────┐                   │   │
-│  │          │    Control (IBVS + MAVLink)         │                   │   │
-│  │          │                                     │                   │   │
-│  │          │  • IBVS视觉伺服    • MAVLink通信    │                   │   │
-│  │          │  • PID控制        • 遥测/指令      │                   │   │
-│  │          │  • 安全限幅        • GCS回传       │                   │   │
-│  │          └──────────────────┼──────────────────┘                   │   │
-│  │                             │                                      │   │
-│  └─────────────────────────────┼──────────────────────────────────────┘   │
-│                                │                                            │
-│                                ▼                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    FalconMindSDK (共享库)                           │   │
-│  │                                                                    │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │   │
-│  │  │ Core API     │  │ Perception   │  │ Flight Ctrl  │             │   │
-│  │  │ Pipeline     │  │ YOLO/Tracker │  │ MAVLink      │             │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘             │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                │                                            │
-│                                ▼                                            │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                    Hardware (RK3588)                                │   │
-│  │                                                                    │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │   │
-│  │  │ NPU (6TOPS)  │  │ Camera       │  │ MAVLink      │             │   │
-│  │  │ YOLO推理     │  │ IMU          │  │ Serial       │             │   │
-│  │  │ DeepSORT     │  │              │  │              │             │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘             │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+---
 
-## 核心组件
-
-### 1. Mission模块 (`include/mission.hpp`, `src/mission/`)
-
-**职责：**
-- 任务状态机管理
-- 阶段转换控制
-- 事件回调处理
-- GCS指令处理
-
-**状态机：**
-```cpp
-enum class MissionPhase {
-    INITIALIZING,      // VINS初始化
-    SEARCHING,         // 区域侦查
-    TARGET_ACQUIRED,   // 发现目标
-    TRACKING,          // 视觉跟踪
-    RETURNING,         // 返航
-    LANDED,            // 已降落
-    ABORTED            // 中止
-};
-```
-
-**使用示例：**
-```cpp
-MissionConfig config;
-config.desired_distance = 30.0;
-config.desired_height = 10.0;
-
-auto mission = createDeniedEnvTrackingMission(config, callbacks);
-mission->initialize();
-mission->start();
-mission->waitForCompletion();
-```
-
-### 2. Navigation模块 (`include/navigation.hpp`, `src/navigation/`)
-
-#### VINSInitializer
-
-**功能：**
-- IMU静止校准 (3秒)
-- Shi-Tomasi特征点检测
-- LK光流跟踪
-- 视觉-惯性对齐
-- 尺度恢复
-
-**接口：**
-```cpp
-class VINSInitializer {
-    bool initialize();  // 阻塞式初始化
-    void startAsync();  // 非阻塞
-    bool isReady() const;
-    double getProgress() const;  // 0-1
-};
-```
-
-#### GPSDefender
-
-**功能：**
-- RAIM一致性检查
-- IMU速度一致性验证
-- 多源交叉验证
-- 自动导航源切换
-
-**检测算法：**
-```cpp
-SpoofingReport processGNSS(const GNSSMeasurement& gnss) {
-    // 1. RAIM检查
-    if (!checkRAIM(gnss)) return SPOOFING_DETECTED;
-    
-    // 2. IMU一致性
-    if (velocityDiff > 3.0) return SPOOFING_DETECTED;
-    
-    // 3. 多源验证
-    if (positionDiff(vo, gnss) > 10.0) return SUSPECTED;
-    
-    return NONE;
-}
-```
-
-### 3. Perception模块 (`include/perception.hpp`, `src/perception/`)
-
-#### YOLODetector
-
-**配置：**
-```cpp
-YOLOConfig config;
-config.model_path = "/models/yolov8n.rknn";
-config.classes = {"person", "vehicle"};
-config.confidence_threshold = 0.6;
-config.use_npu = true;  // RK3588 NPU加速
-```
-
-**性能：**
-- 输入: 640x480
-- 推理时间: ~25ms (NPU)
-- 输出: 边界框 + 置信度
-
-#### DeepSORTTracker
-
-**算法流程：**
-```cpp
-// 1. 检测
-auto detections = yolo.detect(frame);
-
-// 2. 特征提取 (OSNet)
-auto features = osnet.extract(crops);
-
-// 3. 级联匹配
-// 马氏距离 + 余弦距离
-auto matched = cascadeMatch(tracks, detections, features);
-
-// 4. Kalman更新
-for (auto& track : tracks) {
-    track.kalman.predict();
-    track.kalman.update(detection);
-}
-```
-
-**性能：**
-- 跟踪ID保持率: >95%
-- 处理时间: ~5ms
-
-### 4. Control模块 (`include/control.hpp`, `src/control/`)
-
-#### IBVSController
-
-**控制律：**
-```cpp
-VelocityCommand IBVSController::computeControl(
-    const ImageSpaceTarget& target,
-    double current_distance,
-    double current_height) 
-{
-    // 图像误差 (归一化)
-    double ex = target.u;  // -1 to 1
-    double ey = target.v;
-    double ez = current_distance - desired_distance_;
-    
-    // PID控制
-    double vx = -(kp_ * ez + ki_ * integral_ + kd_ * derivative_);
-    double vy = -kp_xy_ * ex * current_distance;
-    double vz = -kp_xy_ * ey * current_distance;
-    double yaw_rate = -kp_yaw_ * ex;
-    
-    // 饱和
-    vx = clamp(vx, -max_speed_, max_speed_);
-    
-    return VelocityCommand{vx, vy, vz, yaw_rate};
-}
-```
-
-#### MAVLinkInterface
-
-**功能：**
-- 连接飞控 (UDP/TCP/Serial)
-- 发送速度/位置指令
-- 接收遥测数据
-- 模式切换
-
-```cpp
-MAVLinkInterface mavlink({"udp://127.0.0.1:14550"});
-mavlink.connect();
-mavlink.setFlightMode("OFFBOARD");
-mavlink.takeoff(50.0);
-mavlink.sendVelocityCommand(cmd);
-```
-
-## 编译与运行
-
-### 编译
-
-```bash
-# 1. 创建构建目录
-mkdir build && cd build
-
-# 2. 配置
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DFALCONMINDSDK_BUILD_TESTS=ON \
-  -DFALCONMINDSDK_BUILD_EXAMPLES=ON
-
-# 3. 编译
-make -j$(nproc)
-
-# 4. 安装 (可选)
-make install
-```
-
-### 运行
-
-```bash
-# 基本用法
-./denied_env_tracking -m mission_001 -u uav_001
-
-# 指定跟踪参数
-./denied_env_tracking \
-  -m mission_001 \
-  -u uav_001 \
-  -d 25.0 \      # 距离25米
-  -H 15.0        # 高度15米
-
-# 使用配置文件
-./denied_env_tracking -c config.yaml
-```
-
-### 交互式命令
-
-运行后可以通过标准输入发送命令：
+## 架构
 
 ```
-s 5          # 选择track_id=5的目标
-c            # 确认选择
-a            # 中止任务
-r            # 返航
-p            # 打印状态
-q            # 退出
+┌─────────────────────────────────────────────────────────────────────┐
+│                     SDK Native 多进程架构                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  launcher.sh (主脚本)                                               │
+│     │                                                               │
+│     ├──▶ mission_launcher (主进程)                                  │
+│     │       │                                                       │
+│     │       ├──▶ ConfigLoader (加载 mission.yaml)                  │
+│     │       │                                                       │
+│     │       ├──▶ MissionController (状态机管理)                     │
+│     │       │                                                       │
+│     │       ├──▶ spawn_process("perception")                       │
+│     │       │       └─▶ YOLO + DeepSORT (20Hz)                     │
+│     │       │                                                       │
+│     │       ├──▶ spawn_process("control")                          │
+│     │       │       └─▶ IBVS + MAVLink (20Hz)                      │
+│     │       │                                                       │
+│     │       ├──▶ spawn_process("navigation")                       │
+│     │       │       └─▶ VINS + GPS (100Hz)                         │
+│     │       │                                                       │
+│     │       └──▶ gcs_bridge (5Hz遥测上报)                          │
+│     │                                                               │
+│     └──▶ watchdog (进程监控)                                        │
+│                                                                     │
+│  进程间通信: ZeroMQ / Shared Memory                                  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## 配置文件 (YAML)
+---
+
+## 配置说明
+
+### 1. Mission配置文件
+
+**文件路径:** `configs/sdk/denied_env_mission.yaml`
 
 ```yaml
-# config.yaml
+# Mission标识
 mission:
   id: "denied_env_001"
-  uav_id: "uav_001"
-  
+  type: "denied_environment_tracking"
+  version: "1.0"
+
+# 区域侦查配置
 search:
+  # 搜索区域（WGS84多边形）
   area:
-    - [40.0768, 116.3477]  # 昌平公园
+    - [40.0768, 116.3477]
     - [40.0778, 116.3477]
     - [40.0778, 116.3487]
     - [40.0768, 116.3487]
-  altitude: 50.0
-  speed: 5.0
-  pattern: "LAWN_MOWER"
   
+  altitude: 50.0              # 搜索高度(m)
+  speed: 5.0                  # 搜索速度(m/s)
+  pattern: "LAWN_MOWER"       # 搜索模式
+  overlap_rate: 0.2           # 重叠率
+
+# 视觉跟踪配置
 tracking:
-  desired_distance: 30.0
-  distance_tolerance: 2.0
-  desired_height: 10.0
-  height_tolerance: 1.0
-  max_speed: 8.0
-  tracking_timeout: 10.0
+  target_class: "person"              # 目标类别
+  desired_distance: 30.0              # 期望距离(m)
+  distance_tolerance: 2.0             # 距离容差(m)
+  desired_height: 10.0                # 期望高度(m)
+  height_tolerance: 1.0               # 高度容差(m)
+  max_speed: 8.0                      # 最大跟踪速度(m/s)
+  control_frequency: 20               # 控制频率(Hz)
+  tracking_timeout: 10.0              # 目标丢失超时(s)
   
+  # IBVS控制参数
+  ibvs_params:
+    kp_distance: 0.5
+    ki_distance: 0.1
+    kd_distance: 0.2
+    kp_position: 0.01
+    kp_yaw: 0.2
+    
+    # 安全限制
+    max_velocity_x: 8.0               # 最大前向速度
+    max_velocity_y: 5.0               # 最大侧向速度
+    max_velocity_z: 3.0               # 最大垂直速度
+    max_yaw_rate: 1.0                 # 最大偏航角速度
+
+# VINS导航配置
 vins:
-  init_time: 30.0
-  required_features: 150
+  init_timeout: 30.0                  # 初始化超时(s)
+  required_features: 150              # 所需特征点数量
+  init_height: 1.5                    # 初始化高度(m)
   
+  # VINS算法参数
+  sliding_window_size: 10
+  imu_frequency: 200                  # IMU频率(Hz)
+  camera_frequency: 30                # 相机频率(Hz)
+
+# GPS欺骗防护配置
 gps_defense:
   enabled: true
-  check_interval: 1.0
+  check_interval: 1.0                 # 检测间隔(s)
   
-mavlink:
-  connection_url: "udp://127.0.0.1:14550"
-  system_id: 1
+  # RAIM参数
+  raim_threshold: 3.0
+  min_satellites: 6
   
+  # IMU一致性参数
+  velocity_threshold: 3.0             # 速度差阈值(m/s)
+  position_threshold: 10.0            # 位置差阈值(m)
+  
+  # 多源融合参数
+  vo_weight: 0.4                      # 视觉里程计权重
+  imu_weight: 0.4                     # IMU权重
+  gnss_weight: 0.2                    # GNSS权重
+
+# 感知配置
+perception:
+  # YOLO检测
+  yolo:
+    model: "yolov8n.rknn"             # 模型文件
+    input_size: [640, 480]            # 输入尺寸
+    classes: ["person", "vehicle"]    # 检测类别
+    confidence_threshold: 0.6
+    nms_threshold: 0.45
+    use_npu: true                     # 使用NPU加速
+  
+  # DeepSORT跟踪
+  tracking:
+    max_age: 30                       # 最大未更新帧数
+    min_hits: 3                       # 确认所需最小匹配次数
+    iou_threshold: 0.3
+    feature_extractor: "osnet"        # 特征提取器
+    feature_dim: 128                  # 特征维度
+
+# 控制配置
+control:
+  # MAVLink连接
+  mavlink:
+    connection_url: "udp://127.0.0.1:14550"
+    system_id: 1
+    component_id: 1
+    
+  # 控制模式
+  flight_mode: "OFFBOARD"             # 离板控制模式
+  
+  # 安全限制
+  safety:
+    geofence_enabled: true
+    max_altitude: 120.0               # 最大高度(m)
+    min_battery: 30.0                 # 最低电量(%)
+    communication_timeout: 10.0       # 通信超时(s)
+
+# 地面站通信配置（可选）
 gcs:
   enabled: true
-  endpoint: "tcp://0.0.0.0:5780"
-  telemetry_rate: 5.0
+  connection:
+    type: "tcp"                       # tcp/udp/mqtt
+    endpoint: "0.0.0.0:5780"          # 监听地址
+  
+  telemetry:
+    rate: 5.0                         # 遥测频率(Hz)
+    items:
+      - position
+      - attitude
+      - velocity
+      - battery
+      - tracking_status
+      - gnss_status
+  
+  commands:
+    - SELECT_TARGET                   # 选择目标
+    - ABORT_MISSION                   # 中止任务
+    - PAUSE_MISSION                   # 暂停任务
+    - RESUME_MISSION                  # 恢复任务
+
+# 日志配置
+logging:
+  level: "info"                       # debug/info/warning/error
+  save_path: "/var/log/falconmind/"
+  save_detections: true               # 保存检测图像
+  save_telemetry: true                # 保存遥测数据
+  max_log_size_mb: 100
+  max_log_files: 10
 ```
 
-## 性能指标
+### 2. 启动脚本
 
-| 模块 | 延迟 | 频率 | CPU占用 |
-|------|------|------|---------|
-| VINS初始化 | 20s | - | 15% |
-| GPS检测 | 5ms | 1Hz | 2% |
-| YOLO检测 | 25ms | 20Hz | 30% (NPU) |
-| DeepSORT | 5ms | 20Hz | 10% |
-| IBVS控制 | 2ms | 20Hz | 5% |
-| MAVLink通信 | 10ms | 20Hz | 3% |
+**文件路径:** `configs/sdk/launcher.sh`
 
-**端到端延迟：** ~79ms
+```bash
+#!/bin/bash
+# launcher.sh - 拒止环境任务启动脚本
 
-## 文件结构
+set -e
+
+# 默认配置
+MISSION_CONFIG="${1:-config/denied_env_mission.yaml}"
+UAV_ID="${2:-uav_001}"
+
+# 检查配置文件
+if [ ! -f "$MISSION_CONFIG" ]; then
+    echo "Error: Mission config not found: $MISSION_CONFIG"
+    exit 1
+fi
+
+echo "=== FalconMind SDK Native Launcher ==="
+echo "Mission Config: $MISSION_CONFIG"
+echo "UAV ID: $UAV_ID"
+echo ""
+
+# 设置库路径
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/lib"
+
+# 启动主进程
+echo "[1/4] Starting Mission Launcher..."
+./bin/mission_launcher \
+    --config "$MISSION_CONFIG" \
+    --uav-id "$UAV_ID" \
+    --daemon &
+LAUNCHER_PID=$!
+echo "Launcher PID: $LAUNCHER_PID"
+
+# 启动看门狗
+echo "[2/4] Starting Watchdog..."
+./bin/watchdog \
+    --monitor-pid $LAUNCHER_PID \
+    --restart-on-failure \
+    --max-restarts 3 &
+WATCHDOG_PID=$!
+echo "Watchdog PID: $WATCHDOG_PID"
+
+# 保存PID
+mkdir -p /var/run/falconmind/
+echo $LAUNCHER_PID > /var/run/falconmind/mission.pid
+echo $WATCHDOG_PID > /var/run/falconmind/watchdog.pid
+
+echo ""
+echo "[3/4] Mission started successfully!"
+echo ""
+echo "Available commands:"
+echo "  echo 's 5' > /tmp/falconmind_cmd    # Select target ID 5"
+echo "  echo 'c' > /tmp/falconmind_cmd     # Confirm selection"
+echo "  echo 'a' > /tmp/falconmind_cmd     # Abort mission"
+echo "  echo 'r' > /tmp/falconmind_cmd     # Return to launch"
+echo "  echo 'p' > /tmp/falconmind_cmd     # Print status"
+echo "  echo 'q' > /tmp/falconmind_cmd     # Quit"
+echo ""
+echo "[4/4] Monitoring... (Press Ctrl+C to stop)"
+
+# 信号处理
+cleanup() {
+    echo ""
+    echo "Shutting down..."
+    kill $LAUNCHER_PID 2>/dev/null || true
+    kill $WATCHDOG_PID 2>/dev/null || true
+    rm -f /var/run/falconmind/*.pid
+    echo "Done."
+    exit 0
+}
+trap cleanup SIGINT SIGTERM
+
+# 等待
+wait
+```
+
+---
+
+## 执行流程
+
+### 启动命令
+
+```bash
+# 基本启动
+./launcher.sh config/denied_env_mission.yaml uav_001
+
+# 指定不同参数
+./launcher.sh config/mission_v2.yaml uav_002
+
+# 调试模式
+DEBUG=1 ./launcher.sh config/denied_env_mission.yaml
+```
+
+### 运行时交互
+
+```bash
+# 选择目标ID=5
+echo "s 5" > /tmp/falconmind_cmd
+
+# 确认选择
+echo "c" > /tmp/falconmind_cmd
+
+# 查看状态
+echo "p" > /tmp/falconmind_cmd
+tail -f /var/log/falconmind/mission.log
+
+# 中止任务
+echo "a" > /tmp/falconmind_cmd
+
+# 安全退出
+echo "q" > /tmp/falconmind_cmd
+```
+
+### 数据流
 
 ```
-03_SDK_Native_Approach/
-├── README.md                          # 本文件
-├── CMakeLists.txt                     # 构建配置
-├── include/denied_env_tracking/
-│   ├── mission.hpp                    # 任务模块
-│   ├── navigation.hpp                 # 导航模块
-│   ├── perception.hpp                 # 感知模块
-│   └── control.hpp                    # 控制模块
-├── src/
-│   ├── main.cpp                       # 程序入口
-│   ├── mission/
-│   │   └── mission_controller.cpp     # 任务控制器实现
-│   ├── navigation/
-│   │   ├── vins_initializer.cpp       # VINS初始化
-│   │   ├── gps_defender.cpp           # GPS防护
-│   │   └── position_fusion.cpp        # EKF融合
-│   ├── perception/
-│   │   ├── yolo_detector.cpp          # YOLO检测器
-│   │   ├── deepsort_tracker.cpp       # DeepSORT跟踪
-│   │   └── distance_estimator.cpp     # 距离估计
-│   ├── control/
-│   │   ├── ibvs_controller.cpp        # IBVS控制器
-│   │   ├── mavlink_interface.cpp      # MAVLink接口
-│   │   └── gcs_interface.cpp          # 地面站接口
-│   └── communication/
-│       └── telemetry_stream.cpp       # 遥测流
-└── tests/
-    ├── test_vins.cpp                  # VINS测试
-    ├── test_tracking.cpp              # 跟踪测试
-    └── test_gps_defender.cpp          # GPS防护测试
+Phase 1: 初始化
+┌────────────────────────────────────────────┐
+│ launcher.sh                                 │
+│     │                                       │
+│     ▼                                       │
+│ mission_launcher                            │
+│     │                                       │
+│     ├──▶ ConfigLoader                       │
+│     │       └─▶ 解析 mission.yaml          │
+│     │                                       │
+│     ├──▶ spawn_process("navigation")       │
+│     │       └─▶ VINSInitializer            │
+│     │           └─▶ 等待初始化完成...      │
+│     │                                       │
+│     └──▶ spawn_process("perception")       │
+│             └─▶ 加载YOLO模型              │
+└────────────────────────────────────────────┘
+
+Phase 2: 搜索
+┌────────────────────────────────────────────┐
+│ navigation进程                              │
+│     └─▶ 生成搜索航点(LAWN_MOWER)           │
+│         └─▶ MAVLink上传航点                │
+│                                            │
+│ perception进程 (并行)                       │
+│     └─▶ YOLO检测 20Hz                      │
+│         └─▶ DeepSORT跟踪                   │
+│             └─▶ 检测到目标?                │
+│                 └─▶ 通知MissionController │
+│                     └─▶ 悬停等待          │
+└────────────────────────────────────────────┘
+
+Phase 3: 跟踪（完全本地闭环）
+┌────────────────────────────────────────────┐
+│ MissionController                           │
+│     └─▶ 接收人工选择目标ID                  │
+│         └─▶ 启动control进程               │
+│                                            │
+│ control进程 (20Hz闭环)                       │
+│     ┌─────────────────────────────────┐   │
+│     │ while tracking:                 │   │
+│     │   target = perception.get()     │   │
+│     │   cmd = ibvs.compute(target)    │   │
+│     │   mavlink.send(cmd)             │   │
+│     │   sleep(0.05)  # 20Hz          │   │
+│     └─────────────────────────────────┘   │
+│                                            │
+│ gcs_bridge (5Hz)                           │
+│     └─▶ 遥测上报Viewer                    │
+└────────────────────────────────────────────┘
 ```
 
-## 优缺点分析
+---
 
-### 优点
+## 进程间通信
 
-1. **性能最优**
-   - 零拷贝设计
-   - 无解释开销
-   - 内存池优化
-   - Cache友好
+### 共享内存（图像帧）
 
-2. **完全定制**
-   - 任意算法实现
-   - 深度优化可能
-   - 硬件加速充分利用
-   - 实时性保证
+```cpp
+// perception → control 图像共享
+struct SharedImage {
+    uint8_t data[640*480*3];  // RGB图像
+    int width, height;
+    uint64_t timestamp;
+    bool new_frame;
+};
+```
 
-3. **可靠性高**
-   - 编译期检查
-   - 无动态错误
-   - 确定性执行
-   - 资源可控
+### ZeroMQ消息（控制指令）
 
-4. **集成灵活**
-   - 直接调用SDK API
-   - 无中间层
-   - 自定义硬件支持
-   - 第三方库集成
+```cpp
+// perception → control 检测结果
+{
+    "type": "detections",
+    "timestamp": 1234567890,
+    "detections": [
+        {
+            "track_id": 5,
+            "bbox": [100, 200, 150, 280],
+            "class": "person",
+            "confidence": 0.92
+        }
+    ]
+}
 
-### 缺点
+// control → mavlink 速度指令
+{
+    "type": "velocity_cmd",
+    "vx": 2.5,
+    "vy": -0.3,
+    "vz": 0.1,
+    "yaw_rate": -0.05
+}
+```
 
-1. **开发门槛高**
-   - 需要C++技能
-   - 算法实现复杂
-   - 调试困难
-   - 开发周期长
+---
 
-2. **维护成本高**
-   - 编译依赖
-   - 平台差异
-   - 测试复杂
-   - 迭代慢
+## 工程依赖
 
-3. **灵活性差**
-   - 参数硬编码
-   - 逻辑修改需重编译
-   - 难以现场调整
-   - 配置能力弱
+### FalconMindSDK 需提供:
+- ✅ Mission配置解析模块
+- ✅ 进程管理API（spawn/monitor/kill）
+- ✅ 进程间通信机制（ZeroMQ/Shared Memory）
+- ✅ 所有算法模块（YOLO/DeepSORT/IBVS/VINS/GPSDefense）
+- ✅ MAVLink接口
+- ✅ 可执行程序构建模板
 
-## 适用场景
+---
 
-- ✅ 量产部署
-- ✅ 性能关键任务
-- ✅ 深度定制需求
-- ✅ 高可靠性要求
-- ✅ 算法研究
+## 当前状态
 
-## 演进建议
+```
+🟡 部分可用（需要完善SDK模块）
 
-1. **模块化设计**
-   - 插件化架构
-   - 热更新能力
-   - 配置驱动
+当前能力:
+  ✅ SDK基础API可用
+  ✅ 可执行程序框架
+  
+需要完善:
+  ⚠️ DeepSORT跟踪（需完善）
+  ❌ IBVS控制器（需实现）
+  ⚠️ VINS初始化管理（需封装）
+  ❌ GPS欺骗检测（需实现）
+  ❌ 多进程架构（需实现）
+  ❌ Mission配置解析（需实现）
 
-2. **工具链完善**
-   - 可视化调试
-   - 性能分析器
-   - 仿真测试
+当SDK完善上述模块后，本配置可直接运行。
+```
 
-3. **代码生成**
-   - 从Builder Flow生成C++
-   - 参数自动调优
-   - 模板代码生成
+---
 
-## 三种方式对比
+## 验证检查点
 
-| 维度 | SDK Native | Builder | Viewer |
-|------|-----------|---------|--------|
-| **性能** | ⭐⭐⭐ 最优 | ⭐⭐ 良好 | ⭐⭐ 良好 |
-| **开发效率** | ⭐⭐ 低 | ⭐⭐⭐ 高 | ⭐⭐ 中 |
-| **灵活性** | ⭐⭐⭐ 最高 | ⭐⭐ 中等 | ⭐⭐⭐ 高 |
-| **实时性** | ⭐⭐⭐ 最优 | ⭐⭐⭐ 最优 | ⭐⭐ 依赖网络 |
-| **维护性** | ⭐⭐ 低 | ⭐⭐ 中等 | ⭐⭐⭐ 高 |
-| **门槛** | ⭐⭐⭐ 高 | ⭐ 低 | ⭐⭐ 中 |
-| **适用阶段** | 量产 | 原型/现场 | 监控/集群 |
-
-## 推荐选择
-
-- **快速原型/现场调试** → Builder方式
-- **有人监督/集群管理** → Viewer方式
-- **量产部署/高可靠性** → SDK Native方式
-- **混合模式** → Builder原型验证 → SDK优化量产
+- [ ] Mission YAML能被正确解析
+- [ ] 所有配置参数被正确加载
+- [ ] 多进程正常启动和运行
+- [ ] 进程间通信正常
+- [ ] VINS初始化<30s完成
+- [ ] YOLO检测20Hz
+- [ ] DeepSORT跟踪ID保持>95%
+- [ ] IBVS控制20Hz闭环
+- [ ] 距离控制精度±2m
+- [ ] 遥测5Hz上报
+- [ ] 人工指令响应<100ms
+- [ ] 弱网环境下任务不中断
