@@ -152,13 +152,13 @@ public:
      */
     explicit GPSDefender(const GPSDefenderConfig& config = GPSDefenderConfig{});
     
-    ~GPSDefender() override = default;
+    ~GPSDefender() = default;
     
     /**
      * @brief 初始化节点
      * @return 是否成功
      */
-    bool initialize() override;
+    bool initialize();
     
     /**
      * @brief 处理GNSS测量数据

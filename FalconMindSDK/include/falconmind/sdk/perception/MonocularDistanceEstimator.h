@@ -12,7 +12,13 @@
 
 #pragma once
 
-#include <math>
+#include <cmath>
+#include <map>
+#include <optional>
+#include <string>
+#include <map>
+#include <optional>
+#include <string>
 #include <map>
 #include <string>
 #include <falconmind/sdk/core/Node.h>
@@ -127,7 +133,7 @@ public:
     /**
      * @brief 初始化估计器
      */
-    bool initialize() override;
+    bool initialize();
     
     /**
      * @brief 注册目标类型尺寸
@@ -150,7 +156,7 @@ public:
      * @return 距离估计结果
      */
     DistanceEstimate estimate(
-        const BoundingBox& bbox,
+        const DetectionBBox& bbox,
         const std::string& class_name
     ) const;
     
@@ -161,7 +167,7 @@ public:
      * @return 距离估计结果
      */
     DistanceEstimate estimateWithHeight(
-        const BoundingBox& bbox,
+        const DetectionBBox& bbox,
         double real_height
     ) const;
     
@@ -172,7 +178,7 @@ public:
      * @return 距离估计结果
      */
     DistanceEstimate estimateFromArea(
-        const BoundingBox& bbox,
+        const DetectionBBox& bbox,
         const std::string& class_name
     ) const;
     

@@ -1,12 +1,15 @@
 /**
  * @file navigation_nodes.hpp
- * @brief 导航相关节点
+ * @brief 导航相关节点 - 使用真实SDK功能
+ * 
+ * 依赖:
+ * - FlightConnectionService: MAVLink飞控通信
  */
 
 #pragma once
 
 #include "falconmind/sdk/flow/flow_node.hpp"
-#include <math>
+#include <cmath>
 #include <vector>
 
 namespace falconmind {
@@ -16,6 +19,11 @@ namespace nodes {
 
 /**
  * @brief 搜索航点生成节点
+ * 
+ * 生成搜索区域覆盖航点，支持多种模式：
+ * - LAWN_MOWER: 割草机模式（往返扫描）
+ * - SPIRAL: 螺旋模式（从中心向外）
+ * - ZIGZAG: Z字形模式
  */
 class SearchPatternGeneratorNode : public FlowNode {
 public:
@@ -24,100 +32,52 @@ public:
     
     std::vector<NodePort> getInputPorts() const override {
         return {
-            {"area", "array", "搜索区域多边形"},
-            {"altitude", "float", "搜索高度"},
-            {"speed", "float", "搜索速度"}
+            {"area", "object", "搜索区域（bounds或center+radius）"},
+            {"altitude", "float", "搜索高度（米）"},
+            {"speed", "float", "搜索速度（米/秒）"}
         };
     }
     
     std::vector<NodePort> getOutputPorts() const override {
         return {
             {"waypoints", "array", "生成的航点列表"},
-            {"waypoint_count", "int", "航点数量"}
+            {"waypoint_count", "int", "航点数量"},
+            {"estimated_duration_seconds", "float", "预计执行时间（秒）"}
         };
     }
     
-    bool configure(const json& config) override {
-        if (config.contains("pattern")) {
-            pattern_ = config["pattern"].get<std::string>();
-        }
-        if (config.contains("overlap_rate")) {
-            overlap_rate_ = config["overlap_rate"].get<double>();
-        }
-        return FlowNode::configure(config);
-    }
-    
-    NodeResult execute(NodeContext& context) override {
-        setState(NodeState::RUNNING);
-        
-        // 获取输入
-        auto area = context.getInput("area");
-        double altitude = context.getInput("altitude").get<double>();
-        double speed = context.getInput("speed").get<double>();
-        
-        // 生成航点
-        json waypoints = generateWaypoints(area, altitude, speed);
-        
-        context.setOutput("waypoints", waypoints);
-        context.setOutput("waypoint_count", static_cast<int>(waypoints.size()));
-        
-        setState(NodeState::COMPLETED);
-        return NodeResult::SUCCESS;
-    }
+    bool configure(const json& config) override;
+    NodeResult execute(NodeContext& context) override;
 
 private:
     std::string pattern_ = "LAWN_MOWER";
     double overlap_rate_ = 0.2;
+    double lane_width_ = 20.0;  // meters
+    double camera_fov_ = 60.0;  // degrees
     
-    json generateWaypoints(const json& area, double altitude, double speed) {
-        json waypoints = json::array();
-        
-        if (pattern_ == "LAWN_MOWER") {
-            waypoints = generateLawnMowerPattern(area, altitude, speed);
-        } else if (pattern_ == "SPIRAL") {
-            waypoints = generateSpiralPattern(area, altitude, speed);
-        } else if (pattern_ == "ZIGZAG") {
-            waypoints = generateZigzagPattern(area, altitude, speed);
-        }
-        
-        return waypoints;
-    }
+    json generateWaypoints(const json& area, double altitude, double speed);
     
-    json generateLawnMowerPattern(const json& area, double altitude, double speed) {
-        // 简化的割草机模式航点生成
-        json waypoints = json::array();
-        
-        // 模拟生成4个航点（实际应根据区域多边形计算）
-        for (int i = 0; i < 4; ++i) {
-            json wp = {
-                {"id", i},
-                {"latitude", 40.0768 + i * 0.0001},
-                {"longitude", 116.3477 + i * 0.0001},
-                {"altitude", altitude},
-                {"speed", speed},
-                {"action", "HOVER"}
-            };
-            waypoints.push_back(wp);
-        }
-        
-        return waypoints;
-    }
+    json generateLawnMowerPattern(
+        double min_lat, double min_lon, double max_lat, double max_lon,
+        double altitude, double speed, double lane_width);
     
-    json generateSpiralPattern(const json& area, double altitude, double speed) {
-        // TODO: 实现螺旋模式
-        return generateLawnMowerPattern(area, altitude, speed);
-    }
+    json generateSpiralPattern(
+        double min_lat, double min_lon, double max_lat, double max_lon,
+        double altitude, double speed, double lane_width);
     
-    json generateZigzagPattern(const json& area, double altitude, double speed) {
-        // TODO: 实现Z字形模式
-        return generateLawnMowerPattern(area, altitude, speed);
-    }
+    json generateZigzagPattern(
+        double min_lat, double min_lon, double max_lat, double max_lon,
+        double altitude, double speed, double lane_width);
+    
+    double estimateDuration(const json& waypoints, double speed);
 };
 
 REGISTER_NODE(SearchPatternGeneratorNode)
 
 /**
  * @brief 航点执行节点
+ * 
+ * 通过MAVLink上传并执行航点任务
  */
 class ExecuteWaypointsNode : public FlowNode {
 public:
@@ -127,48 +87,25 @@ public:
     std::vector<NodePort> getInputPorts() const override {
         return {
             {"waypoints", "array", "航点列表"},
-            {"speed", "float", "飞行速度"}
+            {"speed", "float", "飞行速度（米/秒）"}
         };
     }
     
     std::vector<NodePort> getOutputPorts() const override {
         return {
             {"completed", "bool", "是否完成"},
-            {"current_waypoint", "int", "当前航点索引"}
+            {"current_waypoint", "int", "当前航点索引"},
+            {"current_waypoint_id", "int", "当前航点ID"}
         };
     }
     
-    NodeResult execute(NodeContext& context) override {
-        setState(NodeState::RUNNING);
-        
-        auto waypoints = context.getInput("waypoints");
-        double speed = context.getInput("speed").get<double>();
-        
-        if (!waypoints.is_array()) {
-            setError("Invalid waypoints input");
-            return NodeResult::ERROR;
-        }
-        
-        int total = waypoints.size();
-        
-        // 模拟逐个执行航点
-        for (int i = 0; i < total; ++i) {
-            if (should_stop_) {
-                return NodeResult::ERROR;
-            }
-            
-            context.setOutput("current_waypoint", i);
-            
-            // 模拟飞行到航点
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        
-        context.setOutput("completed", true);
-        context.setOutput("current_waypoint", total);
-        
-        setState(NodeState::COMPLETED);
-        return NodeResult::SUCCESS;
-    }
+    bool configure(const json& config) override;
+    NodeResult execute(NodeContext& context) override;
+
+private:
+    std::string connection_string_ = "udp://127.0.0.1:14540";
+    
+    bool uploadWaypointsToFlightController(const json& waypoints);
 };
 
 REGISTER_NODE(ExecuteWaypointsNode)

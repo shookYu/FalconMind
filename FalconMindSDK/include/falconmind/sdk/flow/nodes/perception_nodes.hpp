@@ -1,24 +1,51 @@
 /**
  * @file perception_nodes.hpp
- * @brief 感知相关节点
+ * @brief 感知节点 - 使用真实SDK功能
+ * 
+ * 依赖:
+ * - RknnDetectorBackend: RK3588 NPU检测
+ * - DeepSortTrackerBackend: DeepSORT跟踪
+ * - CameraSourceNode: 相机数据源
  */
 
 #pragma once
 
 #include "falconmind/sdk/flow/flow_node.hpp"
+#include "falconmind/sdk/perception/RknnDetectorBackend.h"
+#include "falconmind/sdk/perception/DeepSortTrackerBackend.h"
+#include "falconmind/sdk/perception/DetectionTypes.h"
+#include "falconmind/sdk/sensors/CameraSourceNode.h"
+
+#include <memory>
+#include <mutex>
+#include <vector>
+#include <string>
 
 namespace falconmind {
 namespace sdk {
 namespace flow {
 namespace nodes {
 
+using namespace perception;
+
+// Forward declaration of simple distance estimator (defined in .cpp)
+class SimpleDistanceEstimator;
+
 /**
  * @brief 视觉检测节点
+ * 
+ * 使用真实RKNN后端进行YOLO检测，DeepSORT跟踪
  */
 class VisualDetectorNode : public BackgroundNode {
 public:
     NodeType getType() const override { return NodeType::ACTION; }
     std::string getName() const override { return "VisualDetector"; }
+    
+    std::vector<NodePort> getInputPorts() const override {
+        return {
+            {"camera_topic", "string", "相机数据话题", false, "/camera/image"}
+        };
+    }
     
     std::vector<NodePort> getOutputPorts() const override {
         return {
@@ -28,64 +55,45 @@ public:
         };
     }
     
-    bool configure(const json& config) override {
-        if (config.contains("model")) {
-            model_ = config["model"].get<std::string>();
-        }
-        if (config.contains("classes")) {
-            classes_ = config["classes"].get<std::vector<std::string>>();
-        }
-        if (config.contains("confidence_threshold")) {
-            confidence_threshold_ = config["confidence_threshold"].get<double>();
-        }
-        if (config.contains("enable_tracking")) {
-            enable_tracking_ = config["enable_tracking"].get<bool>();
-        }
-        return FlowNode::configure(config);
-    }
-    
-    NodeResult execute(NodeContext& context) override {
-        context.setOutput("detection_active", true);
-        context.setOutput("fps", 20.0);
-        
-        return startBackground(context) ? NodeResult::RUNNING : NodeResult::ERROR;
-    }
-    
-    void runBackground(NodeContext& context) override {
-        while (!should_stop_) {
-            // 模拟目标检测
-            json detections = simulateDetection();
-            context.setOutput("detections", detections);
-            
-            // 每50ms一帧 (20Hz)
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        
-        setState(NodeState::COMPLETED);
-    }
+    bool configure(const json& config) override;
+    bool initialize(const NodeContext& context) override;
+    NodeResult execute(NodeContext& context) override;
+    void runBackground(NodeContext& context) override;
+    void stop() override;
 
 private:
-    std::string model_ = "yolov8n.rknn";
-    std::vector<std::string> classes_ = {"person"};
-    double confidence_threshold_ = 0.6;
+    // 配置参数
+    std::string model_path_;
+    std::vector<std::string> target_classes_;
+    float confidence_threshold_ = 0.6f;
     bool enable_tracking_ = true;
     
-    json simulateDetection() {
-        // 模拟检测结果
-        json detections = json::array();
-        
-        // 模拟检测到一个人
-        json detection = {
-            {"track_id", 1},
-            {"class", "person"},
-            {"confidence", 0.92},
-            {"bbox", {100, 200, 200, 400}},  // x1, y1, x2, y2
-            {"distance_estimate", 35.0}
-        };
-        detections.push_back(detection);
-        
-        return detections;
-    }
+    // 真实SDK组件
+    std::unique_ptr<RknnDetectorBackend> detector_;
+    std::unique_ptr<DeepSortTrackerBackend> tracker_;
+    std::unique_ptr<SimpleDistanceEstimator> simple_distance_estimator_;
+    
+    // 相机源
+    std::shared_ptr<sensors::CameraSourceNode> camera_source_;
+    
+    // 运行时数据
+    struct DetectionFrame {
+        std::vector<Detection> detections;
+        double timestamp;
+    };
+    DetectionFrame last_frame_;
+    std::mutex frame_mutex_;
+    
+    // 执行检测流水线
+    DetectionFrame processFrame(const ImageView& image);
+    
+    // 过滤目标类别
+    std::vector<Detection> filterByClass(const std::vector<Detection>& detections);
+    
+    // 提取外观特征（用于DeepSORT）
+    std::vector<AppearanceFeature> extractFeatures(
+        const ImageView& image, 
+        const std::vector<Detection>& detections);
 };
 
 REGISTER_NODE(VisualDetectorNode)
@@ -108,58 +116,21 @@ public:
         return {
             {"target_found", "bool", "是否发现目标"},
             {"target_count", "int", "目标数量"},
-            {"best_target", "object", "最佳目标"}
+            {"best_target", "object", "最佳目标"},
+            {"all_targets", "array", "所有目标"}
         };
     }
     
-    bool configure(const json& config) override {
-        if (config.contains("target_classes")) {
-            target_classes_ = config["target_classes"].get<std::vector<std::string>>();
-        }
-        if (config.contains("min_confidence")) {
-            min_confidence_ = config["min_confidence"].get<double>();
-        }
-        return FlowNode::configure(config);
-    }
-    
-    NodeResult execute(NodeContext& context) override {
-        auto detections = context.getInput("detections");
-        
-        int target_count = 0;
-        json best_target = nullptr;
-        double best_confidence = 0.0;
-        
-        if (detections.is_array()) {
-            for (const auto& det : detections) {
-                if (det.contains("class") && det.contains("confidence")) {
-                    std::string cls = det["class"].get<std::string>();
-                    double conf = det["confidence"].get<double>();
-                    
-                    // 检查类别和置信度
-                    if (std::find(target_classes_.begin(), target_classes_.end(), cls) != target_classes_.end()
-                        && conf >= min_confidence_) {
-                        target_count++;
-                        
-                        if (conf > best_confidence) {
-                            best_confidence = conf;
-                            best_target = det;
-                        }
-                    }
-                }
-            }
-        }
-        
-        bool found = target_count > 0;
-        context.setOutput("target_found", found);
-        context.setOutput("target_count", target_count);
-        context.setOutput("best_target", best_target);
-        
-        return found ? NodeResult::SUCCESS : NodeResult::FAILURE;
-    }
+    bool configure(const json& config) override;
+    NodeResult execute(NodeContext& context) override;
 
 private:
-    std::vector<std::string> target_classes_ = {"person"};
-    double min_confidence_ = 0.7;
+    std::vector<std::string> target_classes_;
+    float min_confidence_ = 0.7f;
+    int min_detection_frames_ = 3;
+    
+    // 评分函数：选择最佳目标
+    float scoreTarget(const json& target);
 };
 
 REGISTER_NODE(TargetDetectionCheckerNode)

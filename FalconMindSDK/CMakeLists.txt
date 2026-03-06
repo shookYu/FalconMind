@@ -141,6 +141,11 @@ add_library(falconmind_sdk
     src/core/FlowExecutor.cpp
     src/flow/flow_node.cpp
     src/flow/flow_executor_v2.cpp
+    src/flow/nodes/vins_nodes.cpp
+    src/flow/nodes/gps_defense_nodes.cpp
+    src/flow/nodes/perception_nodes.cpp
+    src/flow/nodes/control_nodes.cpp
+    src/flow/nodes/navigation_nodes.cpp
     src/c_api/falconmind_sdk_c_api.cpp
     src/flight/FlightConnectionService.cpp
     src/flight/FlightNodes.cpp

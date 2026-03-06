@@ -9,7 +9,7 @@
 #include <memory>
 #include <vector>
 #include <deque>
-#include <math>
+#include <cmath>
 
 namespace falconmind::sdk::perception {
 
@@ -49,18 +49,18 @@ struct DeepSortConfig {
  * 输入：检测结果 + 外观特征（可选）
  * 输出：跟踪结果（带trackId）
  */
-class DeepSortTrackerBackend : public ITrackerBackend {
+class DeepSortTrackerBackend {
 public:
     DeepSortTrackerBackend();
     explicit DeepSortTrackerBackend(const DeepSortConfig& config);
-    ~DeepSortTrackerBackend() override;
+    ~DeepSortTrackerBackend();
     
-    // ITrackerBackend接口
-    bool load(const std::string& modelPath) override;
-    void unload() override;
-    bool isLoaded() const override { return loaded_; }
+    // 后端接口
+    bool load(const std::string& modelPath);
+    void unload();
+    bool isLoaded() const { return loaded_; }
     
-    std::vector<TrackingResult> run(const std::vector<Detection>& detections) override;
+    std::vector<TrackingResult> run(const std::vector<Detection>& detections);
     
     // 带外观特征的跟踪（推荐）
     std::vector<TrackingResult> runWithFeatures(

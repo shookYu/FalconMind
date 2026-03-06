@@ -10,11 +10,6 @@ namespace falconmind::sdk::perception {
 // 推理后端类型：专注于 RKNN 平台
 enum class DetectionBackendType {
     Unknown = 0,
-    Rknn,           // Rockchip NPU (RK3588/RK3576/RV1126B)
-    CpuReference    // 纯 CPU 参考实现
-};
-enum class DetectionBackendType {
-    Unknown = 0,
     OnnxRuntime,
     Rknn,
     TensorRt,
