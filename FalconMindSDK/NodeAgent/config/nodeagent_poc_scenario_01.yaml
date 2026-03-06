@@ -1,0 +1,119 @@
+# NodeAgent Configuration for PoC Scenario_01
+# Denied Environment Visual Tracking
+
+uav:
+  id: "UAV_001"
+  name: "DeniedEnv-Test"
+  type: "quadrotor"
+
+# GCS (Viewer) Connection
+gcs:
+  host: "localhost"
+  port: 1883
+  heartbeat_timeout_ms: 10000
+  reconnect_interval_ms: 5000
+
+# MQTT Configuration
+mqtt:
+  broker: "localhost"
+  port: 1883
+  client_id: "nodeagent_001"
+  username: ""
+  password: ""
+  
+  # Topics
+  topics:
+    mission_deploy: "falconmind/uav/{uav_id}/mission/deploy"
+    mission_command: "falconmind/uav/{uav_id}/mission/command"
+    mission_target: "falconmind/uav/{uav_id}/mission/target"
+    mission_status: "falconmind/uav/{uav_id}/status"
+    telemetry: "falconmind/uav/{uav_id}/telemetry"
+
+# Autonomy Settings
+autonomy:
+  enabled: true
+  max_offline_duration_minutes: 30
+  
+  # Mission execution
+  mission:
+    auto_start_on_deploy: false
+    abort_on_comm_loss: false
+    return_home_on_low_battery: true
+    
+  # Denied environment specific
+  denied_environment:
+    gps_defense_enabled: true
+    vins_fallback_enabled: true
+    visual_tracking_enabled: true
+
+# Process Management
+processes:
+  # Process names and their startup order
+  startup_order:
+    - "system_manager"
+    - "video_capture"
+    - "vins_slam"
+    - "perception"
+    - "gps_defense"
+    - "mission_planner"
+    - "guidance"
+    - "flight_control"
+    - "data_logger"
+  
+  # Auto-start processes on NodeAgent startup
+  auto_start:
+    - "video_capture"
+    - "vins_slam"
+    - "perception"
+    - "gps_defense"
+    - "data_logger"
+  
+  # Process management method: supervisord | systemd | direct
+  management_method: "supervisord"
+  supervisord_config: "/etc/supervisor/conf.d/falconmind.conf"
+
+# Local Storage
+storage:
+  db_path: "/var/lib/nodeagent/nodeagent.db"
+  max_cache_size_mb: 100
+  sync_interval_seconds: 5
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"
+  output: "console"  # console, file, both
+  file_path: "/var/log/nodeagent/nodeagent.log"
+  max_file_size_mb: 10
+  max_files: 5
+
+# Metrics
+metrics:
+  enabled: true
+  prometheus_port: 9090
+  publish_interval_seconds: 1
+
+# PoC Scenario_01 Specific
+poc_scenario_01:
+  enabled: true
+  
+  # Phase 1: Area Search
+  phase1:
+    search_altitude: 50.0
+    search_speed: 5.0
+    pattern: "LAWN_MOWER"
+    spacing: 20.0
+    target_classes: ["person", "vehicle"]
+    
+  # Phase 2: Target Lock
+  phase2:
+    hover_duration_seconds: 0  # 0 = indefinite
+    selection_timeout_seconds: 300
+    
+  # Phase 3: Visual Tracking
+  phase3:
+    desired_distance: 30.0
+    desired_height: 10.0
+    max_speed: 8.0
+    control_frequency_hz: 20
+    lost_timeout_seconds: 10
