@@ -1,0 +1,212 @@
+{
+  "_template": {
+    "name": "Phase 3: Visual Tracking",
+    "description": "IBVS visual servoing for target tracking with distance and height control",
+    "category": "denied_environment",
+    "version": "1.0",
+    "author": "FalconMind",
+    "tags": ["tracking", "ibvs", "visual_servo", "distance_control"]
+  },
+  "name": "Denied Env - Visual Tracking",
+  "description": "Phase 3: IBVS visual servo control for target tracking at 30m distance, 10m height",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "type": "PhaseEntry",
+        "label": "Phase 3 Entry",
+        "config": {
+          "inputs": ["tracking_config"]
+        }
+      }
+    },
+    {
+      "id": "tracking_loop",
+      "type": "loop",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "type": "TrackingLoop",
+        "label": "Tracking Loop",
+        "config": {
+          "loop_type": "while",
+          "condition": "${tracking_active}",
+          "iteration_delay_ms": 50
+        }
+      }
+    },
+    {
+      "id": "get_tracking_state",
+      "type": "action",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "type": "TrackingStateGetter",
+        "label": "Get State",
+        "config": {}
+      }
+    },
+    {
+      "id": "check_visible",
+      "type": "condition",
+      "position": { "x": 500, "y": 250 },
+      "data": {
+        "type": "VisibilityCheck",
+        "label": "Visible?",
+        "config": {}
+      }
+    },
+    {
+      "id": "handle_lost",
+      "type": "action",
+      "position": { "x": 500, "y": 400 },
+      "data": {
+        "type": "TargetRecoveryHandler",
+        "label": "Recovery",
+        "config": {
+          "search_pattern": "SPIRAL",
+          "max_recovery_time": 10,
+          "prediction_enabled": true
+        }
+      }
+    },
+    {
+      "id": "check_recovery",
+      "type": "condition",
+      "position": { "x": 500, "y": 550 },
+      "data": {
+        "type": "RecoveryCheck",
+        "label": "Recovered?",
+        "config": {}
+      }
+    },
+    {
+      "id": "abort_tracking",
+      "type": "action",
+      "position": { "x": 300, "y": 550 },
+      "data": {
+        "type": "AbortTracking",
+        "label": "Abort",
+        "config": {
+          "message": "Target lost for too long",
+          "action": "RETURN_TO_LAUNCH"
+        }
+      }
+    },
+    {
+      "id": "compute_control",
+      "type": "action",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "type": "IBVSController",
+        "label": "Compute Control",
+        "config": {
+          "use_pid": true,
+          "saturate_output": true,
+          "max_velocity": 8
+        }
+      }
+    },
+    {
+      "id": "send_command",
+      "type": "action",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "type": "SendVelocityCommand",
+        "label": "Send Command",
+        "config": {
+          "command": "VELOCITY_CONTROL",
+          "coordinate_frame": "BODY_NED",
+          "safety_checks": ["altitude_bounds", "velocity_limits", "geofence"]
+        }
+      }
+    },
+    {
+      "id": "report_status",
+      "type": "action",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "type": "TelemetryReport",
+        "label": "Report Status",
+        "config": {
+          "frequency": "5Hz",
+          "payload": ["distance", "height", "quality", "control_output"]
+        }
+      }
+    },
+    {
+      "id": "check_end_conditions",
+      "type": "condition",
+      "position": { "x": 1100, "y": 300 },
+      "data": {
+        "type": "EndConditionChecker",
+        "label": "End?",
+        "config": {
+          "conditions": ["operator_abort", "battery_low", "target_lost", "mission_complete"]
+        }
+      }
+    },
+    {
+      "id": "return_home",
+      "type": "action",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "type": "ReturnHome",
+        "label": "Return Home",
+        "config": {
+          "command": "RETURN_TO_LAUNCH",
+          "altitude": 50,
+          "speed": 5,
+          "navigation_source": "VINS"
+        }
+      }
+    },
+    {
+      "id": "mission_complete",
+      "type": "action",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "type": "MissionComplete",
+        "label": "Complete",
+        "config": {
+          "status": "SUCCESS"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "tracking_loop", "label": "" },
+    { "id": "e2", "source": "tracking_loop", "target": "get_tracking_state", "label": "" },
+    { "id": "e3", "source": "get_tracking_state", "target": "check_visible", "label": "" },
+    { "id": "e4", "source": "check_visible", "target": "compute_control", "label": "visible" },
+    { "id": "e5", "source": "check_visible", "target": "handle_lost", "label": "lost" },
+    { "id": "e6", "source": "handle_lost", "target": "check_recovery", "label": "" },
+    { "id": "e7", "source": "check_recovery", "target": "get_tracking_state", "label": "recovered" },
+    { "id": "e8", "source": "check_recovery", "target": "abort_tracking", "label": "failed" },
+    { "id": "e9", "source": "compute_control", "target": "send_command", "label": "" },
+    { "id": "e10", "source": "send_command", "target": "report_status", "label": "" },
+    { "id": "e11", "source": "report_status", "target": "check_end_conditions", "label": "" },
+    { "id": "e12", "source": "check_end_conditions", "target": "return_home", "label": "end" },
+    { "id": "e13", "source": "check_end_conditions", "target": "tracking_loop", "label": "continue" },
+    { "id": "e14", "source": "return_home", "target": "mission_complete", "label": "" }
+  ],
+  "config": {
+    "execution_mode": "realtime",
+    "realtime_constraints": {
+      "max_latency_ms": 100,
+      "control_frequency_hz": 20
+    },
+    "safety": {
+      "geofence_strict": true,
+      "altitude_limits": [5, 120],
+      "velocity_limits": [0, 15]
+    },
+    "degraded_modes": {
+      "on_gps_loss": "continue_vins",
+      "on_comm_loss": "continue_autonomous",
+      "on_low_battery": "return_home",
+      "on_tracking_loss": "hover_and_search"
+    }
+  }
+}

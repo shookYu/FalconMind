@@ -1,0 +1,159 @@
+{
+  "_template": {
+    "name": "Phase 2: Target Lock",
+    "description": "Target confirmation and lock for visual tracking",
+    "category": "denied_environment",
+    "version": "1.0",
+    "author": "FalconMind",
+    "tags": ["target_lock", "confirmation", "tracking"]
+  },
+  "name": "Denied Env - Target Lock",
+  "description": "Phase 2: Target confirmation, operator selection, and tracking initialization",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "entry",
+      "type": "trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "type": "PhaseEntry",
+        "label": "Phase 2 Entry",
+        "config": {
+          "inputs": ["target_info", "detection_image"]
+        }
+      }
+    },
+    {
+      "id": "maintain_hover",
+      "type": "action",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "type": "Hover",
+        "label": "Maintain Hover",
+        "config": {
+          "command": "HOVER",
+          "duration": 0,
+          "hold_position": true
+        }
+      }
+    },
+    {
+      "id": "stream_video",
+      "type": "action",
+      "position": { "x": 300, "y": 250 },
+      "data": {
+        "type": "VideoStream",
+        "label": "Stream to GCS",
+        "config": {
+          "quality": "720p",
+          "codec": "H.264",
+          "overlay": "detection_boxes"
+        }
+      }
+    },
+    {
+      "id": "target_awaiter",
+      "type": "custom",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "type": "TargetAwaiter",
+        "label": "Wait for Selection",
+        "config": {
+          "timeout_seconds": 300,
+          "target_classes": ["person"],
+          "min_confidence": 0.7
+        }
+      }
+    },
+    {
+      "id": "check_confirmed",
+      "type": "condition",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "type": "TargetConfirmationChecker",
+        "label": "Confirmed?",
+        "config": {}
+      }
+    },
+    {
+      "id": "configure_tracking",
+      "type": "action",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "type": "TrackingConfigurator",
+        "label": "Configure Tracking",
+        "config": {
+          "desired_distance": 30,
+          "desired_height": 10,
+          "max_speed": 8,
+          "pid_params": {
+            "kp_distance": 0.5,
+            "ki_distance": 0.1,
+            "kd_distance": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "start_visual_servo",
+      "type": "custom",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "type": "VisualServoController",
+        "label": "Start IBVS",
+        "config": {
+          "control_mode": "IBVS",
+          "update_rate": 20,
+          "enable_adaptive_gain": true
+        }
+      }
+    },
+    {
+      "id": "transition_phase3",
+      "type": "action",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "type": "PhaseTransition",
+        "label": "Phase 3",
+        "config": {
+          "next_phase": "tracking",
+          "transition_data": ["tracking_config"]
+        }
+      }
+    },
+    {
+      "id": "timeout_handler",
+      "type": "action",
+      "position": { "x": 700, "y": 300 },
+      "data": {
+        "type": "TimeoutHandler",
+        "label": "Timeout",
+        "config": {
+          "action": "RETURN_TO_LAUNCH",
+          "notification": "Target selection timeout - returning to launch"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "entry", "target": "maintain_hover", "label": "" },
+    { "id": "e2", "source": "entry", "target": "stream_video", "label": "parallel" },
+    { "id": "e3", "source": "maintain_hover", "target": "target_awaiter", "label": "" },
+    { "id": "e4", "source": "target_awaiter", "target": "check_confirmed", "label": "" },
+    { "id": "e5", "source": "check_confirmed", "target": "configure_tracking", "label": "confirmed" },
+    { "id": "e6", "source": "check_confirmed", "target": "timeout_handler", "label": "timeout" },
+    { "id": "e7", "source": "configure_tracking", "target": "start_visual_servo", "label": "" },
+    { "id": "e8", "source": "start_visual_servo", "target": "transition_phase3", "label": "" }
+  ],
+  "config": {
+    "execution_mode": "reactive",
+    "error_handling": {
+      "on_node_error": "pause_and_notify",
+      "max_retries": 3
+    },
+    "safety": {
+      "timeout_action": "return_home",
+      "max_wait_time": 300
+    }
+  }
+}

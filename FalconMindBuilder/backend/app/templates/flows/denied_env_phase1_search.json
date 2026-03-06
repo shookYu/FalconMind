@@ -1,0 +1,190 @@
+{
+  "_template": {
+    "name": "Phase 1: Area Search",
+    "description": "Denied environment area search with VINS navigation and visual detection",
+    "category": "denied_environment",
+    "version": "1.0",
+    "author": "FalconMind",
+    "tags": ["search", "vins", "detection", "gps_denied"]
+  },
+  "name": "Denied Env - Area Search",
+  "description": "Phase 1: VINS initialization, GPS defense, search pattern execution, and target detection",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "trigger",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "type": "Start",
+        "label": "Start Mission",
+        "config": {
+          "confirmation_required": true,
+          "confirmation_message": "Start denied environment area search mission?"
+        }
+      }
+    },
+    {
+      "id": "vins_check",
+      "type": "custom",
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "type": "VINSStatusCheck",
+        "label": "VINS Ready?",
+        "config": {
+          "min_confidence": 0.8,
+          "timeout_seconds": 30
+        }
+      }
+    },
+    {
+      "id": "vins_error",
+      "type": "action",
+      "position": { "x": 300, "y": 300 },
+      "data": {
+        "type": "Notification",
+        "label": "VINS Error",
+        "config": {
+          "type": "error",
+          "message": "VINS initialization failed",
+          "auto_abort": true
+        }
+      }
+    },
+    {
+      "id": "gps_defense",
+      "type": "custom",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "type": "GPSDefenseActivator",
+        "label": "GPS Defense",
+        "config": {
+          "raim_check": true,
+          "imu_consistency_check": true,
+          "vins_cross_check": true,
+          "alert_threshold": "SUSPECTED"
+        }
+      }
+    },
+    {
+      "id": "search_pattern",
+      "type": "custom",
+      "position": { "x": 700, "y": 100 },
+      "data": {
+        "type": "SearchPatternGenerator",
+        "label": "Search Pattern",
+        "config": {
+          "pattern": "LAWN_MOWER",
+          "altitude": 50,
+          "speed": 5,
+          "spacing": 20,
+          "overlap_rate": 0.2,
+          "turn_radius": 10
+        }
+      }
+    },
+    {
+      "id": "visual_detector",
+      "type": "custom",
+      "position": { "x": 900, "y": 100 },
+      "data": {
+        "type": "VisualDetector",
+        "label": "Visual Detection",
+        "config": {
+          "model": "yolov8n",
+          "classes": ["person", "vehicle"],
+          "confidence_threshold": 0.6,
+          "nms_threshold": 0.45,
+          "enable_tracking": true,
+          "use_npu": true
+        }
+      }
+    },
+    {
+      "id": "check_target",
+      "type": "condition",
+      "position": { "x": 1100, "y": 100 },
+      "data": {
+        "type": "TargetDetectionChecker",
+        "label": "Target Found?",
+        "config": {
+          "target_classes": ["person"],
+          "min_confidence": 0.7,
+          "min_detection_frames": 3
+        }
+      }
+    },
+    {
+      "id": "hover_notify",
+      "type": "action",
+      "position": { "x": 1300, "y": 100 },
+      "data": {
+        "type": "HoverAndNotify",
+        "label": "Hover & Notify",
+        "config": {
+          "command": "HOVER",
+          "notifications": [
+            {
+              "type": "webhook",
+              "url": "${gcs_endpoint}/target_detected"
+            },
+            {
+              "type": "ui_alert",
+              "message": "Target detected! Waiting for confirmation",
+              "priority": "high"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "transition_phase2",
+      "type": "action",
+      "position": { "x": 1500, "y": 100 },
+      "data": {
+        "type": "PhaseTransition",
+        "label": "Phase 2",
+        "config": {
+          "next_phase": "target_lock",
+          "transition_data": ["target_info", "detection_image"]
+        }
+      }
+    },
+    {
+      "id": "continue_search",
+      "type": "action",
+      "position": { "x": 1100, "y": 300 },
+      "data": {
+        "type": "ContinueSearch",
+        "label": "Continue Search",
+        "config": {
+          "command": "CONTINUE"
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "start", "target": "vins_check", "label": "" },
+    { "id": "e2", "source": "vins_check", "target": "gps_defense", "label": "ready" },
+    { "id": "e3", "source": "vins_check", "target": "vins_error", "label": "not_ready" },
+    { "id": "e4", "source": "gps_defense", "target": "search_pattern", "label": "" },
+    { "id": "e5", "source": "search_pattern", "target": "visual_detector", "label": "" },
+    { "id": "e6", "source": "visual_detector", "target": "check_target", "label": "" },
+    { "id": "e7", "source": "check_target", "target": "hover_notify", "label": "found" },
+    { "id": "e8", "source": "check_target", "target": "continue_search", "label": "not_found" },
+    { "id": "e9", "source": "hover_notify", "target": "transition_phase2", "label": "" },
+    { "id": "e10", "source": "continue_search", "target": "check_target", "label": "" }
+  ],
+  "config": {
+    "execution_mode": "reactive",
+    "error_handling": {
+      "on_node_error": "pause_and_notify",
+      "max_retries": 3
+    },
+    "safety": {
+      "geofence_enabled": true,
+      "max_altitude": 120,
+      "battery_rtl_threshold": 30
+    }
+  }
+}
