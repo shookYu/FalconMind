@@ -1,0 +1,51 @@
+# Data Logger Process Configuration
+# Telemetry and video recording for post-mission analysis
+
+# Database Settings
+database:
+  path: "/var/log/falconmind/mission_data.db"  # SQLite database path
+  max_size_mb: 1024                       # Max database size before rotation
+  retention_days: 30                      # Data retention period
+  circular_buffer: false                  # Enable circular buffer mode
+  buffer_size: 10000                      # Max records in circular buffer
+
+# Video Recording Settings
+video:
+  enabled: true                           # Enable video recording
+  output_path: "/var/log/falconmind/videos/"  # Video output directory
+  codec: "H264"                           # Video codec: H264, H265, MJPEG
+  quality: 23                             # x264 quality (0-51, lower is better)
+  fps: 30                                 # Video frame rate
+  width: 1920                             # Video width
+  height: 1080                            # Video height
+
+# DDS Topics to Record
+dds:
+  domain_id: "0"                          # DDS domain ID
+  topics:                                 # Topics to subscribe and record
+    - "DetectionArray"
+    - "TrackingArray"
+    - "NavigationState"
+    - "GuidanceCommand"
+    - "VideoFrameMetadata"
+
+# MQTT Topics to Record
+mqtt:
+  broker: "localhost"                     # MQTT broker address
+  port: 1883                              # MQTT broker port
+  client_id: "data_logger_001"            # MQTT client ID
+  topics:                                 # MQTT topics to subscribe
+    - "falconmind/telemetry"
+    - "falconmind/command"
+    - "falconmind/status"
+
+# Recording Settings
+recording:
+  frequency: 5.0                          # Telemetry recording frequency (Hz)
+  sync_video_telemetry: true              # Synchronize video with telemetry
+  mission_id_prefix: "mission_"           # Mission ID prefix
+
+# Compression
+compression:
+  enabled: true                           # Compress stored data
+  level: 6                                # Compression level (1-9)

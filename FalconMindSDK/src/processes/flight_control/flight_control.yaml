@@ -1,0 +1,46 @@
+# Flight Control Process Configuration
+# MAVLink communication bridge to PX4/ArduPilot
+
+# Serial Port Settings
+serial:
+  port: "/dev/ttyUSB0"                    # Serial port device
+  baud_rate: 921600                       # Baud rate
+  data_bits: 8                            # Data bits
+  stop_bits: 1                            # Stop bits
+  parity: false                           # Parity check
+
+# MAVLink Settings
+mavlink:
+  system_id: 1                            # Our system ID
+  component_id: 1                         # Our component ID
+  autopilot_id: 1                         # Autopilot system ID
+  autopilot: "PX4"                        # Autopilot type: PX4 or ARDUPILOT
+  heartbeat_interval_ms: 1000             # Heartbeat interval (ms)
+
+# Control Settings
+control:
+  frequency: 20.0                         # Control loop frequency (Hz)
+  max_velocity_xy: 10.0                   # Max horizontal velocity (m/s)
+  max_velocity_z: 5.0                     # Max vertical velocity (m/s)
+  max_yaw_rate: 45.0                      # Max yaw rate (deg/s)
+
+# Safety Settings
+safety:
+  enable_geofence: true                   # Enable geofence
+  geofence_radius: 500.0                  # Max distance from home (m)
+  max_altitude: 120.0                     # Maximum altitude (m)
+  min_altitude: 2.0                       # Minimum altitude (m)
+  battery_warning_level: 30.0             # Battery warning level (%)
+  battery_critical_level: 20.0            # Battery critical level (%)
+
+# Timeouts
+timeouts:
+  command_ms: 500                         # Command acknowledgement timeout (ms)
+  telemetry_ms: 2000                      # Telemetry timeout (ms)
+  connection_ms: 5000                     # Connection establishment timeout (ms)
+
+# DDS Settings
+dds:
+  domain_id: "0"                          # DDS domain ID
+  guidance_topic: "GuidanceCommand"       # Guidance command topic
+  telemetry_topic: "FlightTelemetry"      # Flight telemetry topic

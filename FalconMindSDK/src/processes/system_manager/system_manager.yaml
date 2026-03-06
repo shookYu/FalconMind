@@ -1,0 +1,52 @@
+# System Manager Process Configuration
+# Process monitoring and health management
+
+# Process Monitoring Settings
+monitoring:
+  heartbeat_interval_ms: 1000             # Heartbeat check interval (ms)
+  heartbeat_timeout_ms: 3000              # Heartbeat timeout (process considered dead)
+  max_restarts: 3                         # Max restart attempts per process
+  restart_cooldown_seconds: 60            # Cooldown between restart attempts
+
+# MQTT Settings
+mqtt:
+  broker: "localhost"                     # MQTT broker address
+  port: 1883                              # MQTT broker port
+  client_id: "system_manager_001"         # MQTT client ID
+  health_topic: "falconmind/status/system"  # Health status topic
+  alert_topic: "falconmind/alerts"        # Alert topic
+  publish_interval_ms: 1000               # Health status publish interval
+
+# HTTP Server Settings
+http:
+  enabled: true                           # Enable HTTP server
+  port: 8080                              # HTTP server port
+  bind_address: "0.0.0.0"                 # HTTP bind address
+
+# Resource Monitoring
+resources:
+  monitor_cpu: true                       # Monitor CPU usage
+  monitor_memory: true                    # Monitor memory usage
+  monitor_temperature: true               # Monitor temperature
+  monitor_disk: true                      # Monitor disk usage
+  check_interval_ms: 5000                 # Resource check interval
+
+# Temperature Thresholds (RK3588)
+temperature:
+  warning: 75.0                           # Warning threshold (°C)
+  critical: 85.0                          # Critical threshold (°C)
+  emergency: 95.0                         # Emergency threshold (°C)
+
+# Memory Thresholds
+memory:
+  warning_percent: 80.0                   # Warning threshold (%)
+  critical_percent: 90.0                  # Critical threshold (%)
+
+# Disk Thresholds
+disk:
+  warning_percent: 80.0                   # Warning threshold (%)
+  critical_percent: 90.0                  # Critical threshold (%)
+
+# Graceful Shutdown
+shutdown:
+  timeout_seconds: 10                     # Timeout for graceful shutdown

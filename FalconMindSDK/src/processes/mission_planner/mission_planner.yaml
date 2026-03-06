@@ -1,0 +1,48 @@
+# Mission Planner Process Configuration
+# Mission state machine and waypoint generation
+
+# MQTT Settings
+mqtt:
+  broker: "localhost"                     # MQTT broker address
+  port: 1883                              # MQTT broker port
+  command_topic: "falconmind/command"     # Command subscription topic
+  status_topic: "falconmind/status/mission"  # Status publish topic
+
+# Search Pattern Settings
+search:
+  pattern: "LAWN_MOWER"                   # Search pattern: LAWN_MOWER, SPIRAL, ZIGZAG
+  altitude: 50.0                          # Search altitude (m)
+  speed: 5.0                              # Search speed (m/s)
+  spacing: 20.0                           # Waypoint spacing (m)
+  overlap_rate: 0.2                       # Search area overlap (0-1)
+  turn_radius: 10.0                       # Turn radius (m)
+
+# Target Detection
+target:
+  confidence_threshold: 0.7               # Minimum detection confidence
+  min_detection_frames: 3                 # Frames to confirm target
+  classes:                                # Target classes to track
+    - "person"
+    - "vehicle"
+  
+  # Tracking parameters
+  desired_distance: 30.0                  # Target tracking distance (m)
+  desired_height: 10.0                    # Target tracking height (m)
+  max_speed: 8.0                          # Maximum tracking speed (m/s)
+
+# Safety Settings
+safety:
+  geofence_radius: 500.0                  # Maximum distance from home (m)
+  max_altitude: 120.0                     # Maximum altitude (m)
+  min_altitude: 5.0                       # Minimum altitude (m)
+  battery_rtl_threshold: 30.0             # Return to launch battery level (%)
+  mission_timeout: 1800.0                 # Mission timeout (seconds)
+
+# State Machine
+state_machine:
+  takeoff_height: 50.0                    # Takeoff altitude (m)
+  max_tracking_loss_seconds: 10           # Max time without target before abort
+
+# DDS Settings
+dds:
+  domain_id: "0"                          # DDS domain ID

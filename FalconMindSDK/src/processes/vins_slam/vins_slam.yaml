@@ -1,0 +1,63 @@
+# VINS-SLAM Process Configuration
+# Visual-Inertial Navigation System for GPS-denied environments
+
+# IMU Settings
+imu:
+  device: "/dev/i2c-1"                    # IMU I2C device
+  frequency: 200                          # IMU sampling rate (Hz)
+  acc_noise: 0.1                          # Accelerometer noise density (m/s^2/sqrt(Hz))
+  gyro_noise: 0.01                        # Gyroscope noise density (rad/s/sqrt(Hz))
+  acc_bias_noise: 0.001                   # Accelerometer random walk
+  gyro_bias_noise: 0.0001                 # Gyroscope random walk
+
+# Camera Settings
+camera:
+  device: "/dev/video0"                   # Camera V4L2 device
+  width: 640                              # Camera width
+  height: 480                             # Camera height
+  fps: 30                                 # Camera frame rate
+  
+  # Camera-IMU extrinsic calibration (T_imu_cam)
+  # Rotation matrix (row-major)
+  R_imu_cam: [1.0, 0.0, 0.0,
+              0.0, 1.0, 0.0,
+              0.0, 0.0, 1.0]
+  # Translation vector (meters)
+  t_imu_cam: [0.0, 0.0, 0.0]
+
+# Feature Tracking
+features:
+  max_count: 150                          # Maximum features to track
+  min_count: 50                           # Minimum features for valid tracking
+  quality: 0.01                           # Feature quality threshold
+  block_size: 21                          # Optical flow block size
+
+# VINS-Fusion Parameters
+vins:
+  window_size: 10                         # Sliding window size
+  min_parallax: 10                        # Minimum parallax for keyframe (pixels)
+  max_solver_time: 0.04                   # Maximum solver time (seconds)
+  max_iterations: 8                       # Maximum optimization iterations
+  keyframe_distance: 0.1                  # Minimum distance between keyframes (m)
+
+# Initialization
+initialization:
+  imu_duration: 1.0                       # IMU initialization duration (seconds)
+  accel_threshold: 0.5                    # Static detection threshold
+  min_frames: 10                          # Minimum frames for initialization
+
+# DDS Settings
+dds:
+  domain_id: "0"                          # DDS domain ID
+  navigation_topic: "NavigationState"     # Navigation state topic name
+
+# Output Settings
+publish_frequency: 100                    # NavigationState publish rate (Hz)
+enable_gps_fusion: false                  # Enable GPS fusion (disabled for denied environment)
+
+# Logging
+logging:
+  log_path: "/var/log/falconmind/vins_slam.log"
+  save_trajectory: true
+  trajectory_path: "/var/log/falconmind/trajectory.txt"
+  level: "info"                           # debug, info, warning, error
