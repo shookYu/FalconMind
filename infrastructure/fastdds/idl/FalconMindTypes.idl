@@ -1,0 +1,371 @@
+// FalconMind DDS IDL Definitions
+// Real-time communication interfaces for UAV swarm
+//
+// Build instructions:
+//   fastddsgen -d . -example CMake FalconMindTypes.idl
+//   mkdir build && cd build
+//   cmake .. && make
+
+#ifndef FALCONMIND_TYPES_IDL
+#define FALCONMIND_TYPES_IDL
+
+module falconmind {
+    module dds {
+        
+        // =====================================================================
+        // Timestamp and common types
+        // =====================================================================
+        
+        struct Timestamp {
+            uint64 seconds;
+            uint32 nanoseconds;
+        };
+        
+        enum DataQuality {
+            QUALITY_UNKNOWN,
+            QUALITY_GOOD,
+            QUALITY_BAD,
+            QUALITY_UNCERTAIN
+        };
+        
+        // =====================================================================
+        // Geometry types
+        // =====================================================================
+        
+        struct Vector2D {
+            float x;
+            float y;
+        };
+        
+        struct Vector3D {
+            float x;
+            float y;
+            float z;
+        };
+        
+        struct Quaternion {
+            float x;
+            float y;
+            float z;
+            float w;
+        };
+        
+        struct BoundingBox {
+            float x;        // top-left x
+            float y;        // top-left y
+            float width;
+            float height;
+            float confidence;
+        };
+        
+        // =====================================================================
+        // Detection Types
+        // =====================================================================
+        
+        enum DetectionClass {
+            CLASS_UNKNOWN,
+            CLASS_PERSON,
+            CLASS_VEHICLE,
+            CLASS_BUILDING,
+            CLASS_ANIMAL,
+            CLASS_DRONE,
+            CLASS_AIRCRAFT
+        };
+        
+        struct Detection {
+            uint32 track_id;           // -1 if not tracked
+            DetectionClass class_id;
+            string class_name;
+            BoundingBox bbox;
+            float confidence;
+            float distance_meters;     // estimated distance
+            Vector3D position_3d;      // 3D position in camera frame
+            DataQuality quality;
+            Timestamp timestamp;
+        };
+        
+        struct DetectionArray {
+            string frame_id;
+            uint32 sequence;
+            Timestamp timestamp;
+            sequence<Detection> detections;
+            uint32 image_width;
+            uint32 image_height;
+        };
+        
+        // =====================================================================
+        // Tracking Types
+        // =====================================================================
+        
+        enum TrackingState {
+            TRACKING_TENTATIVE,
+            TRACKING_CONFIRMED,
+            TRACKING_LOST
+        };
+        
+        struct Track {
+            uint32 track_id;
+            DetectionClass class_id;
+            string class_name;
+            TrackingState state;
+            uint32 hit_count;
+            uint32 miss_count;
+            uint32 age_frames;
+            Timestamp first_seen;
+            Timestamp last_seen;
+            BoundingBox bbox;
+            Vector2D velocity;         // pixel/frame
+            float distance_meters;
+            DataQuality quality;
+            sequence<Vector2D> trajectory;  // last N positions
+        };
+        
+        struct TrackingArray {
+            string frame_id;
+            uint32 sequence;
+            Timestamp timestamp;
+            sequence<Track> tracks;
+            uint32 active_tracks;
+            uint32 total_tracks;
+        };
+        
+        // =====================================================================
+        // Navigation Types
+        // =====================================================================
+        
+        enum NavigationSource {
+            NAV_GPS,
+            NAV_VINS,
+            NAV_FUSED,
+            NAV_DEAD_RECKONING
+        };
+        
+        enum GpsSpoofingLevel {
+            GPS_NORMAL,
+            GPS_SUSPECTED,
+            GPS_DETECTED,
+            GPS_CRITICAL
+        };
+        
+        struct GeoPosition {
+            double latitude;
+            double longitude;
+            double altitude_amsl;      // Above mean sea level
+            double altitude_relative;  // Relative to takeoff
+            float horizontal_accuracy;
+            float vertical_accuracy;
+            DataQuality quality;
+        };
+        
+        struct VelocityNED {
+            float north_m_s;
+            float east_m_s;
+            float down_m_s;
+            float speed_m_s;
+            float ground_speed_m_s;
+            DataQuality quality;
+        };
+        
+        struct Attitude {
+            Quaternion orientation;
+            float roll_deg;
+            float pitch_deg;
+            float yaw_deg;
+            float roll_rate_dps;
+            float pitch_rate_dps;
+            float yaw_rate_dps;
+            DataQuality quality;
+        };
+        
+        struct NavigationState {
+            string uav_id;
+            uint32 sequence;
+            Timestamp timestamp;
+            
+            NavigationSource source;
+            GpsSpoofingLevel gps_spoofing_level;
+            boolean gps_reliable;
+            float vins_confidence;
+            
+            GeoPosition position;
+            VelocityNED velocity;
+            Attitude attitude;
+            
+            uint8 num_satellites;
+            float gps_hdop;
+            float gps_vdop;
+        };
+        
+        // =====================================================================
+        // Guidance Types
+        // =====================================================================
+        
+        enum GuidanceMode {
+            GUIDANCE_IDLE,
+            GUIDANCE_POSITION,
+            GUIDANCE_VELOCITY,
+            GUIDANCE_ATTITUDE,
+            GUIDANCE_TRACK_TARGET,
+            GUIDANCE_FOLLOW_WAYPOINT,
+            GUIDANCE_LAND,
+            GUIDANCE_RTL  // Return to Launch
+        };
+        
+        enum TrackingMode {
+            TRACKING_MODE_NONE,
+            TRACKING_MODE_POSITION,
+            TRACKING_MODE_VELOCITY
+        };
+        
+        struct TargetInfo {
+            uint32 track_id;
+            boolean tracked;
+            float image_x;        // normalized [-1, 1]
+            float image_y;        // normalized [-1, 1]
+            float distance_meters;
+            float bearing_deg;
+            float elevation_deg;
+        };
+        
+        struct GuidanceCommand {
+            string uav_id;
+            uint32 sequence;
+            Timestamp timestamp;
+            Timestamp valid_until;    // Command expiration
+            
+            GuidanceMode mode;
+            TrackingMode tracking_mode;
+            boolean valid;
+            string error_message;
+            
+            // Velocity command
+            float velocity_x_m_s;     // Body frame forward
+            float velocity_y_m_s;     // Body frame right
+            float velocity_z_m_s;     // Body frame down
+            float yaw_rate_dps;
+            
+            // Position command (optional)
+            GeoPosition target_position;
+            float target_yaw_deg;
+            
+            // Target tracking (optional)
+            TargetInfo target;
+            float desired_distance_meters;
+            
+            // Constraints
+            float max_speed_m_s;
+            float max_yaw_rate_dps;
+            float max_acceleration_m_s2;
+        };
+        
+        // =====================================================================
+        // Mission Types
+        // =====================================================================
+        
+        enum MissionStatus {
+            MISSION_IDLE,
+            MISSION_RUNNING,
+            MISSION_PAUSED,
+            MISSION_COMPLETED,
+            MISSION_ABORTED,
+            MISSION_ERROR
+        };
+        
+        struct Waypoint {
+            uint32 index;
+            GeoPosition position;
+            float hold_time_s;
+            float acceptance_radius_m;
+            float speed_m_s;
+            uint8 command;        // MAVLink command
+        };
+        
+        struct MissionStatusMsg {
+            string uav_id;
+            uint32 mission_id;
+            MissionStatus status;
+            uint32 current_waypoint;
+            uint32 total_waypoints;
+            float progress_percent;
+            float estimated_time_remaining_s;
+            Timestamp timestamp;
+        };
+        
+        struct MissionCommand {
+            string uav_id;
+            uint32 mission_id;
+            
+            enum MissionCommandType {
+                CMD_START,
+                CMD_PAUSE,
+                CMD_RESUME,
+                CMD_ABORT,
+                CMD_SKIP_WAYPOINT,
+                CMD_GOTO_WAYPOINT
+            };
+            
+            MissionCommandType command;
+            uint32 waypoint_index;    // For GOTO_WAYPOINT
+        };
+        
+        // =====================================================================
+        // System Health Types
+        // =====================================================================
+        
+        enum ComponentHealth {
+            HEALTH_UNKNOWN,
+            HEALTH_HEALTHY,
+            HEALTH_DEGRADED,
+            HEALTH_UNHEALTHY,
+            HEALTH_CRITICAL
+        };
+        
+        struct ComponentStatus {
+            string name;
+            ComponentHealth health;
+            float cpu_percent;
+            uint64 memory_bytes;
+            float temperature_c;
+            string error_message;
+        };
+        
+        struct SystemHealth {
+            string uav_id;
+            Timestamp timestamp;
+            
+            ComponentHealth overall_health;
+            sequence<ComponentStatus> components;
+            
+            // System resources
+            float cpu_total_percent;
+            uint64 memory_total_bytes;
+            uint64 memory_free_bytes;
+            float disk_usage_percent;
+            float battery_percent;
+            float battery_voltage;
+            float battery_current;
+            
+            // Uptime
+            uint64 uptime_seconds;
+        };
+        
+        // =====================================================================
+        // Video Frame Metadata (lightweight, actual video via RTSP)
+        // =====================================================================
+        
+        struct VideoFrameMetadata {
+            string stream_id;         // "camera", "detected", "tracked"
+            string rtsp_url;
+            uint32 sequence;
+            Timestamp timestamp;
+            uint32 width;
+            uint32 height;
+            float fps;
+            string encoding;          // "h264", "h265"
+            uint32 bitrate_kbps;
+        };
+        
+    };  // module dds
+};  // module falconmind
+
+#endif  // FALCONMIND_TYPES_IDL
