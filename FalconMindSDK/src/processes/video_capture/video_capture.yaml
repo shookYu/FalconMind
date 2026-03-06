@@ -1,0 +1,127 @@
+# Video Capture Process Configuration
+# FalconMind UAV Video Streaming
+
+# Camera Configuration
+camera:
+  source: "/dev/video0"        # V4L2 device or "mipi" for MIPI CSI
+  width: 1920                  # Capture resolution
+  height: 1080
+  fps: 30                      # Frame rate
+  format: "NV12"              # Pixel format (NV12, YUV422, RGB)
+  buffer_count: 4             # V4L2 buffer count
+  io_mode: "mmap"             # I/O mode: mmap, userptr, dma
+
+# Video Encoding
+encoding:
+  encoder: "auto"             # x264enc, mpph264enc (RK3588), vaapih264enc, auto
+  bitrate: 4000               # kbps
+  quality: 4                  # Encoder quality (0-9)
+  gop_size: 30                # Group of Pictures size
+  profile: "main"             # H264 profile: baseline, main, high
+  level: "4.1"               # H264 level
+  
+  # Rate control
+  rate_control: "vbr"         # vbr (variable), cbr (constant), cq (constant quality)
+  min_bitrate: 2000           # kbps
+  max_bitrate: 8000           # kbps
+
+# RTSP Server
+rtsp:
+  port: 8554                  # RTSP port
+  mount: "/live/camera"       # Stream mount point
+  factory_path: "/live/camera"
+  
+  # Multiple streams
+  streams:
+    - name: "camera"
+      mount: "/live/camera"
+      description: "Raw camera feed"
+    - name: "detected"
+      mount: "/live/detected"
+      description: "With detection overlay"
+      enabled: false
+    - name: "tracked"
+      mount: "/live/tracked"
+      description: "With tracking overlay"
+      enabled: false
+
+# DDS Configuration
+dds:
+  domain_id: "0"              # DDS domain ID
+  topic: "VideoFrameMetadata" # DDS topic name
+  participant_name: "VideoCaptureParticipant"
+  
+  # QoS settings
+  reliability: "best_effort"  # reliable, best_effort
+  durability: "volatile"      # volatile, transient_local
+  history: "keep_last"        # keep_last, keep_all
+  history_depth: 1
+  deadline_ms: 33             # 30fps deadline
+
+# Hardware Acceleration (RK3588 specific)
+hardware:
+  enabled: true
+  type: "mpp"                 # mpp (Rockchip), vaapi (Intel), none
+  
+  # MPP specific
+  mpp:
+    rc_mode: "vbr"           # Rate control: vbr, cbr, fixqp
+    qp_init: 26              # Initial QP
+    qp_min: 18               # Min QP
+    qp_max: 40               # Max QP
+    qp_step: 4               # QP step
+
+# Pipeline Settings
+pipeline:
+  buffer_size: 10             # GStreamer buffer size
+  leaky_queue: true           # Drop old frames when full
+  enable_overlay: false       # Enable text overlay
+  overlay_text: "FalconMind"
+  overlay_position: "top-left"
+  
+  # Processing elements
+  enable_deinterlace: false
+  enable_denoise: false
+  enable_stabilization: false
+
+# Recording (optional)
+recording:
+  enabled: false
+  output_dir: "/var/lib/falconmind/recordings"
+  format: "mp4"              # mp4, mkv, ts
+  segment_duration: 600      # seconds (10 minutes)
+  max_segments: 144          # Keep 24 hours (10min * 144 = 24h)
+  auto_cleanup: true         # Delete old segments
+  
+  # Trigger conditions
+  trigger_on_detection: true
+  trigger_on_event: true
+  pre_buffer_seconds: 5      # Record 5s before event
+  post_buffer_seconds: 10    # Record 10s after event
+
+# Network Optimization
+network:
+  tcp_nodelay: true
+  socket_buffer_size: 1048576  # 1MB
+  mtu: 1400                    # For VPN/wireless
+
+# Performance Tuning
+performance:
+  realtime_priority: true
+  cpu_affinity: [2, 3]        # Bind to CPU cores 2,3 (performance cores on RK3588)
+  nice_level: -10             # Higher priority
+  
+# Logging
+logging:
+  level: "info"              # debug, info, warn, error
+  file: "/var/log/falconmind/video_capture.log"
+  max_size: "100MB"
+  max_files: 10
+  console: true
+
+# Monitoring
+monitoring:
+  enabled: true
+  metrics_port: 9090
+  health_check_interval: 10   # seconds
+  publish_stats: true         # Publish pipeline stats via DDS
