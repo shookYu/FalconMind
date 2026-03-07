@@ -159,7 +159,7 @@ add_library(falconmind_sdk
     src/perception/PerceptionPluginManager.cpp
     src/perception/RknnDetectorBackend.cpp
     src/perception/EnvironmentDetectionNode.cpp
-    src/perception/OnnxRuntimeDetectorBackend.cpp
+    # src/perception/OnnxRuntimeDetectorBackend.cpp  # FIXME: x86/x64 only, not for ARM64/RK3576
     # src/perception/TensorRtDetectorBackend.cpp  # FIXME: requires CUDA
     src/perception/LowLightAdaptationNode.cpp
     src/perception/LidarSlamNode.cpp
