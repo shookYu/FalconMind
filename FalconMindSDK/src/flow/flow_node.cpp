@@ -65,8 +65,8 @@ void FlowNode::setError(const std::string& message) {
 // BackgroundNode实现
 BackgroundNode::~BackgroundNode() {
     stop();
-    if (background_thread_ && background_thread->joinable()) {
-        background_thread->join();
+    if (background_thread_ && background_thread_->joinable()) {
+        background_thread_->join();
     }
 }
 
@@ -95,8 +95,8 @@ void BackgroundNode::stop() {
     should_stop_ = true;
     FlowNode::stop();
     
-    if (background_thread_ && background_thread->joinable()) {
-        background_thread->join();
+    if (background_thread_ && background_thread_->joinable()) {
+        background_thread_->join();
         background_thread_.reset();
     }
 }
