@@ -224,6 +224,20 @@ cd FalconMindSDK
 
 **Key concepts:** flow-based-architecture, mission-planning, modular-nodes, python-bindings, drone-autonomy, phase-2-completion
 
+### FalconMindBuilder/backend/app/core/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 281bd743-a9de-4126-8d3e-42957b578819 | 🟣 feature | Builder/Viewer PoC Scenario_01 实现完成 | 2026-03-06 |
+
+**Key concepts:** poc-scenario-01, builder, viewer, mission-deployment, webrtc, mqtt-telemetry, flow-templates
+
+### FalconMindBuilder/backend/app/services/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 281bd743-a9de-4126-8d3e-42957b578819 | 🟣 feature | Builder/Viewer PoC Scenario_01 实现完成 | 2026-03-06 |
+
+**Key concepts:** poc-scenario-01, builder, viewer, mission-deployment, webrtc, mqtt-telemetry, flow-templates
+
 ### FalconMindSDK/
 | ID | Type | Title | Date |
 |----|------|-------|------|
@@ -254,6 +268,13 @@ cd FalconMindSDK
 
 **Key concepts:** monocular-depth-estimation, camera-intrinsics, object-size-based-distance, falconmind-node, perception-pipeline, deepsort-tracking, kalman-filter, appearance-features, hungarian-algorithm, cascade-matching
 
+### FalconMindSDK/NodeAgent/src/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 6b56248d-b54f-4b26-b6a3-6fa4bef80422 | 🔴 bugfix | MQTT Mission Handler - Arrow Operator Typos | 2026-03-07 |
+
+**Key concepts:** syntax-error, arrow-operator, mqtt-client, nodeagent, mission-handler, ownership-semantics
+
 ### FalconMindSDK/python/
 | ID | Type | Title | Date |
 |----|------|-------|------|
@@ -275,12 +296,84 @@ cd FalconMindSDK
 
 **Key concepts:** flow-based-architecture, mission-planning, modular-nodes, python-bindings, drone-autonomy, phase-2-completion
 
+### FalconMindSDK/src/processes/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 62a08e10-a5c3-42a5-8807-9babd389ad8b | 🟣 feature | 生产级代码完成 - 5个SDK业务进程实现 | 2026-03-06 |
+| 6541439b-964c-44ba-9251-10f5332a217d | 🟣 feature | 生产级代码实现进行中 - 5个SDK进程并行开发 | 2026-03-06 |
+
+**Key concepts:** production-grade, vins-fusion, mavlink, sqlite, process-monitoring, dds, supervisord, production-grade-code, mission-state-machine, sqlite-logging
+
+### FalconMindSDK/src/processes/data_logger/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 99735077-6dca-4628-ac62-170631c31556 | 🟣 feature | Data Logger Process - Telemetry and Video Recording | 2026-03-07 |
+
+**Key concepts:** mission-data-recording, dds-topic-capture, sqlite-storage, video-synchronization, mqtt-telemetry, circular-buffer, data-retention
+
+### FalconMindSDK/src/processes/gps_defense/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 4fb5cb8e-7c7b-4e83-b3a1-594973f89777 | 🔵 discovery | GPS Defense Configuration and GNSS Data Structures | 2026-03-07 |
+| 8fcb6fc0-d422-4c73-8957-9e05bb000b69 | 🟣 feature | GPS Defense Process - Multi-Source Spoofing Detection | 2026-03-07 |
+
+**Key concepts:** spoofing-detection-parameters, gnss-data-structures, multi-constellation, raim-inputs, pseudorange-measurements, cn0-signal-quality, gps-spoofing-detection, raim-monitoring, multi-gnss-fusion, vins-cross-verification
+
+### FalconMindSDK/src/processes/guidance/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| a87ce28b-23eb-4c1a-bf8c-9af1da84c27e | 🟣 feature | VINS-SLAM Process Implementation Task In Progress | 2026-03-06 |
+
+**Key concepts:** vins-fusion, visual-inertial-odometry, fast-dds, rk3588-edge, gps-denied-navigation, multi-process-architecture, background-implementation
+
+### FalconMindSDK/src/processes/perception/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| a87ce28b-23eb-4c1a-bf8c-9af1da84c27e | 🟣 feature | VINS-SLAM Process Implementation Task In Progress | 2026-03-06 |
+
+**Key concepts:** vins-fusion, visual-inertial-odometry, fast-dds, rk3588-edge, gps-denied-navigation, multi-process-architecture, background-implementation
+
+### FalconMindSDK/src/processes/system_manager/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 17ff8abc-e7cc-46a5-a458-c7469c85b622 | 🟣 feature | System Manager Process - Production-Grade Process Orchestration | 2026-03-07 |
+
+**Key concepts:** process-supervision, heartbeat-monitoring, auto-restart-policy, thermal-management, mqtt-health-telemetry, rk3588-edge, http-health-check, resource-monitoring
+
 ### FalconMindSDK/tests/flow/
 | ID | Type | Title | Date |
 |----|------|-------|------|
 | 410cbc3d-d3ab-456c-9677-d00556e14747 | 🟣 feature | FalconMindSDK Flow Node System Implementation | 2026-03-05 |
 
 **Key concepts:** flow-based-architecture, mission-planning, modular-nodes, python-bindings, drone-autonomy, phase-2-completion
+
+### FalconMindViewer/backend/app/api/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 281bd743-a9de-4126-8d3e-42957b578819 | 🟣 feature | Builder/Viewer PoC Scenario_01 实现完成 | 2026-03-06 |
+
+**Key concepts:** poc-scenario-01, builder, viewer, mission-deployment, webrtc, mqtt-telemetry, flow-templates
+
+### infrastructure/fastdds/idl/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| a87ce28b-23eb-4c1a-bf8c-9af1da84c27e | 🟣 feature | VINS-SLAM Process Implementation Task In Progress | 2026-03-06 |
+
+**Key concepts:** vins-fusion, visual-inertial-odometry, fast-dds, rk3588-edge, gps-denied-navigation, multi-process-architecture, background-implementation
+
+### infrastructure/supervisord/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| 62a08e10-a5c3-42a5-8807-9babd389ad8b | 🟣 feature | 生产级代码完成 - 5个SDK业务进程实现 | 2026-03-06 |
+
+**Key concepts:** production-grade, vins-fusion, mavlink, sqlite, process-monitoring, dds, supervisord
+
+### PoC/Scenario_01_DeniedGPS_VisualTracking/
+| ID | Type | Title | Date |
+|----|------|-------|------|
+| ded814aa-73be-4306-96bc-43a9421c774d | 🔵 discovery | Denied GPS Visual Tracking - Three Architecture Approaches | 2026-03-06 |
+
+**Key concepts:** architecture-comparison, configuration-driven, edge-computing, multi-process-architecture, flow-based-orchestration, mission-executor, denied-gps-operation, shared-memory-ipc
 
 💡 *Use `mem-find` to search full details. Use `mem-create` to save important decisions.*
 <!-- /open-mem-context -->

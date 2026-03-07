@@ -33,7 +33,11 @@
 #include <atomic>
 #include <csignal>
 #include <chrono>
-#include <math>
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <cstring>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -80,6 +84,12 @@ struct GPSDefenseConfig {
     std::string dds_domain_id{"0"};
     std::string nav_topic{"NavigationState"};
     
+    // GNSS hardware settings
+    std::string gnss_serial_port{"/dev/ttyACM0"};  // u-blox GPS USB
+    int gnss_baud_rate{115200};
+    int gnss_timeout_ms{1000};
+    
+    // MQTT settings
     // MQTT settings
     std::string mqtt_broker{"tcp://localhost:1883"};
     std::string mqtt_client_id{"falconmind-gps-defense"};
@@ -472,34 +482,272 @@ private:
         }
     }
     
-    GNSSMeasurement getGNSSMeasurement() {
-        // In production, read from GNSS receiver via UART/SPI
-        // This is a placeholder with simulated data
-        GNSSMeasurement gnss;
+    // GNSS Serial port file descriptor
+    int gnss_fd_{-1};
+    std::string nmea_buffer_;
+    
+    bool openGNSSPort() {
+        gnss_fd_ = open(config_.gnss_serial_port.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+        if (gnss_fd_ < 0) {
+            std::cerr << "[GPSDefense] Failed to open GNSS port: " 
+                      << config_.gnss_serial_port << std::endl;
+            return false;
+        }
         
+        // Configure serial port
+        struct termios tty;
+        if (tcgetattr(gnss_fd_, &tty) != 0) {
+            std::cerr << "[GPSDefense] tcgetattr failed" << std::endl;
+            close(gnss_fd_);
+            gnss_fd_ = -1;
+            return false;
+        }
+        
+        // Set baud rate
+        speed_t baud = B115200;
+        switch (config_.gnss_baud_rate) {
+            case 9600: baud = B9600; break;
+            case 19200: baud = B19200; break;
+            case 38400: baud = B38400; break;
+            case 57600: baud = B57600; break;
+            case 115200: baud = B115200; break;
+            default: baud = B115200; break;
+        }
+        
+        cfsetospeed(&tty, baud);
+        cfsetispeed(&tty, baud);
+        
+        // 8N1
+        tty.c_cflag &= ~PARENB;
+        tty.c_cflag &= ~CSTOPB;
+        tty.c_cflag &= ~CSIZE;
+        tty.c_cflag |= CS8;
+        tty.c_cflag |= CREAD | CLOCAL;
+        
+        // Raw mode
+        tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY);
+        tty.c_oflag &= ~OPOST;
+        
+        // Timeout
+        tty.c_cc[VMIN] = 0;
+        tty.c_cc[VTIME] = 10;  // 1 second timeout
+        
+        if (tcsetattr(gnss_fd_, TCSANOW, &tty) != 0) {
+            std::cerr << "[GPSDefense] tcsetattr failed" << std::endl;
+            close(gnss_fd_);
+            gnss_fd_ = -1;
+            return false;
+        }
+        
+        // Clear buffer
+        tcflush(gnss_fd_, TCIOFLUSH);
+        nmea_buffer_.clear();
+        
+        std::cout << "[GPSDefense] GNSS port opened: " << config_.gnss_serial_port 
+                  << " @ " << config_.gnss_baud_rate << " baud" << std::endl;
+        return true;
+    }
+    
+    void closeGNSSPort() {
+        if (gnss_fd_ >= 0) {
+            close(gnss_fd_);
+            gnss_fd_ = -1;
+        }
+    }
+    
+    // Parse NMEA checksum
+    bool verifyNMEAChecksum(const std::string& sentence) {
+        size_t star_pos = sentence.find('*');
+        if (star_pos == std::string::npos || star_pos + 3 > sentence.length()) {
+            return false;
+        }
+        
+        uint8_t checksum = 0;
+        for (size_t i = 1; i < star_pos; ++i) {
+            checksum ^= sentence[i];
+        }
+        
+        uint8_t provided = std::stoi(sentence.substr(star_pos + 1, 2), nullptr, 16);
+        return checksum == provided;
+    }
+    
+    // Parse GGA sentence
+    bool parseGGA(const std::string& sentence, GNSSMeasurement& gnss) {
+        // $GNGGA,time,lat,NS,lon,EW,fix,sats,hdop,alt,alt_unit,geoid,geoid_unit,,*cs
+        std::vector<std::string> fields;
+        size_t start = 0, end = 0;
+        while ((end = sentence.find(',', start)) != std::string::npos) {
+            fields.push_back(sentence.substr(start, end - start));
+            start = end + 1;
+        }
+        fields.push_back(sentence.substr(start));
+        
+        if (fields.size() < 15) return false;
+        
+        // Parse fix type
+        if (fields[6].empty()) return false;
+        gnss.fix_type = std::stoi(fields[6]);
+        if (gnss.fix_type == 0) return false;  // No fix
+        
+        // Parse latitude
+        if (!fields[2].empty() && !fields[3].empty()) {
+            double deg = std::stod(fields[2].substr(0, 2));
+            double min = std::stod(fields[2].substr(2));
+            gnss.latitude = deg + min / 60.0;
+            if (fields[3] == "S") gnss.latitude = -gnss.latitude;
+        }
+        
+        // Parse longitude
+        if (!fields[4].empty() && !fields[5].empty()) {
+            double deg = std::stod(fields[4].substr(0, 3));
+            double min = std::stod(fields[4].substr(3));
+            gnss.longitude = deg + min / 60.0;
+            if (fields[5] == "W") gnss.longitude = -gnss.longitude;
+        }
+        
+        // Parse satellites
+        if (!fields[7].empty()) {
+            gnss.num_satellites = static_cast<uint8_t>(std::stoi(fields[7]));
+        }
+        
+        // Parse HDOP
+        if (!fields[8].empty()) {
+            gnss.hdop = std::stof(fields[8]);
+        }
+        
+        // Parse altitude
+        if (!fields[9].empty()) {
+            gnss.altitude = std::stod(fields[9]);
+        }
+        
+        return true;
+    }
+    
+    // Parse RMC sentence for velocity
+    bool parseRMC(const std::string& sentence, GNSSMeasurement& gnss) {
+        // $GNRMC,time,status,lat,NS,lon,EW,spd,cog,date,mag_var,mag_dir,mode*cs
+        std::vector<std::string> fields;
+        size_t start = 0, end = 0;
+        while ((end = sentence.find(',', start)) != std::string::npos) {
+            fields.push_back(sentence.substr(start, end - start));
+            start = end + 1;
+        }
+        fields.push_back(sentence.substr(start));
+        
+        if (fields.size() < 12) return false;
+        
+        // Check status
+        if (fields[2] != "A") return false;  // Not active
+        
+        // Parse speed (knots to m/s)
+        if (!fields[7].empty()) {
+            double speed_knots = std::stod(fields[7]);
+            double speed_m_s = speed_knots * 0.514444;
+            
+            // Parse course
+            if (!fields[8].empty()) {
+                double course = std::stod(fields[8]);
+                double course_rad = course * M_PI / 180.0;
+                gnss.velocity_north = speed_m_s * std::cos(course_rad);
+                gnss.velocity_east = speed_m_s * std::sin(course_rad);
+            }
+        }
+        
+        return true;
+    }
+    
+    // Read and parse NMEA sentences
+    GNSSMeasurement getGNSSMeasurement() {
+        GNSSMeasurement gnss;
         gnss.timestamp_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
-        gnss.latitude = 40.0768;
-        gnss.longitude = 116.3477;
-        gnss.altitude = 50.0;
-        gnss.velocity_north = 0.0;
-        gnss.velocity_east = 0.0;
-        gnss.velocity_down = 0.0;
-        gnss.hdop = 1.2f;
-        gnss.vdop = 2.0f;
-        gnss.pdop = 2.3f;
-        gnss.num_satellites = 12;
-        gnss.fix_type = 3;
+        gnss.fix_type = 0;
+        gnss.num_satellites = 0;
+        gnss.hdop = 99.9f;
+        gnss.vdop = 99.9f;
+        gnss.pdop = 99.9f;
         
-        // Simulate satellites
-        for (int i = 1; i <= 12; ++i) {
-            SatelliteInfo sat;
-            sat.prn = i;
-            sat.system = 0;  // GPS
-            sat.pseudorange = 20000000.0f + i * 1000.0f;
-            sat.cn0 = 40.0f + i;
-            sat.used_in_solution = true;
-            gnss.satellites.push_back(sat);
+        // Open port if not open
+        if (gnss_fd_ < 0) {
+            if (!openGNSSPort()) {
+                std::cerr << "[GPSDefense] Cannot open GNSS port" << std::endl;
+                return gnss;
+            }
+        }
+        
+        // Read NMEA sentences
+        char buffer[256];
+        bool have_gga = false;
+        bool have_rmc = false;
+        auto start_time = std::chrono::steady_clock::now();
+        
+        while (!have_gga || !have_rmc) {
+            // Check timeout
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - start_time).count();
+            if (elapsed > config_.gnss_timeout_ms) {
+                std::cerr << "[GPSDefense] GNSS read timeout" << std::endl;
+                break;
+            }
+            
+            // Read data
+            ssize_t n = read(gnss_fd_, buffer, sizeof(buffer) - 1);
+            if (n < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    continue;
+                }
+                std::cerr << "[GPSDefense] GNSS read error: " << strerror(errno) << std::endl;
+                closeGNSSPort();
+                break;
+            }
+            if (n == 0) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            
+            buffer[n] = '\0';
+            nmea_buffer_ += buffer;
+            
+            // Process complete sentences
+            size_t pos;
+            while ((pos = nmea_buffer_.find('\n')) != std::string::npos) {
+                std::string sentence = nmea_buffer_.substr(0, pos);
+                nmea_buffer_.erase(0, pos + 1);
+                
+                // Remove \r
+                if (!sentence.empty() && sentence.back() == '\r') {
+                    sentence.pop_back();
+                }
+                
+                // Check valid NMEA
+                if (sentence.length() < 10 || sentence[0] != '$') {
+                    continue;
+                }
+                
+                // Verify checksum
+                if (!verifyNMEAChecksum(sentence)) {
+                    std::cerr << "[GPSDefense] NMEA checksum failed" << std::endl;
+                    continue;
+                }
+                
+                // Parse sentence
+                if (sentence.find("GGA") != std::string::npos) {
+                    if (parseGGA(sentence, gnss)) {
+                        have_gga = true;
+                    }
+                } else if (sentence.find("RMC") != std::string::npos) {
+                    if (parseRMC(sentence, gnss)) {
+                        have_rmc = true;
+                    }
+                }
+            }
+        }
+        
+        // Clear buffer if too large
+        if (nmea_buffer_.length() > 4096) {
+            nmea_buffer_.clear();
         }
         
         return gnss;

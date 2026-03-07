@@ -67,11 +67,11 @@ bool MqttMissionHandler::initialize(const std::string& brokerHost,
         
         // Create callback
         auto callback = std::make_unique<MqttCallback>(*this);
-        mqttClient_>-set_callback(*callback);
+        mqttClient_->set_callback(*callback);
         mqttCallback_ = callback.release();
         
         // Connect
-        mqttClient_>-connect(connOpts_)->wait();
+        mqttClient_->connect(connOpts_)->wait();
         
         std::cout << "[MqttMissionHandler] Connecting to " << serverUri << std::endl;
         return true;
@@ -85,7 +85,7 @@ bool MqttMissionHandler::initialize(const std::string& brokerHost,
 void MqttMissionHandler::shutdown() {
     if (mqttClient_ && connected_) {
         try {
-            mqttClient_>-disconnect()->wait();
+            mqttClient_->disconnect()->wait();
             std::cout << "[MqttMissionHandler] Disconnected from MQTT broker" << std::endl;
         } catch (const mqtt::exception& e) {
             std::cerr << "[MqttMissionHandler] Disconnect error: " << e.what() << std::endl;
